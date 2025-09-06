@@ -1,0 +1,28 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo 'Starting preBuild phase...'
+        - echo 'Current working directory:'
+        - pwd
+        - echo 'Contents of current directory:'
+        - ls -la
+        - echo 'Installing dependencies...'
+        - npm ci
+        - echo 'Dependencies installed successfully'
+    build:
+      commands:
+        - echo 'Starting build phase...'
+        - echo 'Building Next.js application...'
+        - npm run build
+        - echo 'Build completed successfully'
+        - echo 'Contents of out directory:'
+        - ls -la out/ || echo 'Out directory not found'
+  artifacts:
+    baseDirectory: out
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
