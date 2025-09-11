@@ -26,11 +26,6 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  // Configure allowed dev origins to suppress CORS warnings
-  devIndicators: {
-    appIsrStatus: false,
-    buildActivity: false,
-  },
   // Enable experimental features for better development experience
   experimental: {
     // Enable optimized package imports

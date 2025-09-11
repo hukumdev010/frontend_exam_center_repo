@@ -10,8 +10,8 @@ export function AuthButtonCore() {
     if (isLoading) {
         return (
             <div className="flex items-center gap-2">
-                <div className="h-10 w-24 bg-gray-200 animate-pulse rounded-md flex items-center justify-center">
-                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <div className="h-10 w-24 bg-blue-100 animate-pulse rounded-xl flex items-center justify-center">
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
                 </div>
             </div>
         )
@@ -21,7 +21,12 @@ export function AuthButtonCore() {
         return (
             <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-medium text-sm">
+                            {user?.name?.charAt(0).toUpperCase()}
+                        </span>
+                    </div>
+                    <span className="font-medium text-slate-700 hidden sm:block">
                         {user?.name}
                     </span>
                 </div>
@@ -29,10 +34,10 @@ export function AuthButtonCore() {
                     onClick={() => signOut()}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 border-red-200 hover:bg-red-50 hover:border-red-300 text-red-600"
                 >
                     <LogOut className="w-4 h-4" />
-                    Sign out
+                    <span className="hidden sm:block">Sign out</span>
                 </Button>
             </div>
         )
@@ -41,7 +46,9 @@ export function AuthButtonCore() {
     return (
         <Button
             onClick={() => signIn()}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 
+                     text-white font-medium px-6 py-2 rounded-xl shadow-lg hover:shadow-xl 
+                     transition-all duration-200 hover-lift"
         >
             Sign in with Google
         </Button>
