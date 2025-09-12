@@ -26,9 +26,28 @@ interface QuestionCardProps {
     question?: Question;
     onAnswer: (isCorrect: boolean, points: number) => void;
     onSubmit: (isCorrect: boolean, canProceed: boolean) => void;
+    // Navigation props
+    onNext?: () => void;
+    onPrevious?: () => void;
+    canProceed?: boolean;
+    isFirstQuestion?: boolean;
+    isLastQuestion?: boolean;
+    currentQuestion?: number;
+    totalQuestions?: number;
 }
 
-export function QuestionCard({ question, onAnswer, onSubmit }: QuestionCardProps) {
+export function QuestionCard({
+    question,
+    onAnswer,
+    onSubmit,
+    onNext,
+    onPrevious,
+    canProceed = false,
+    isFirstQuestion = false,
+    isLastQuestion = false,
+    currentQuestion,
+    totalQuestions
+}: QuestionCardProps) {
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
     const [showExplanation, setShowExplanation] = useState(false);
     const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -54,16 +73,41 @@ export function QuestionCard({ question, onAnswer, onSubmit }: QuestionCardProps
     // Return loading state if question is not available
     if (!question) {
         return (
-            <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
-                <div className="animate-pulse">
-                    <div className="h-4 bg-slate-200 rounded w-3/4 mb-4"></div>
-                    <div className="h-4 bg-slate-200 rounded w-1/2 mb-6"></div>
-                    <div className="space-y-3 mb-6">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="h-12 bg-slate-200 rounded"></div>
-                        ))}
+            <div className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50 rounded-3xl border border-slate-200/60 shadow-xl backdrop-blur-sm">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/3 to-indigo-500/5"></div>
+                {/* Animated background pattern */}
+                <div className="absolute inset-0 opacity-30">
+                    <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-3xl animate-pulse"></div>
+                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-transparent rounded-full blur-2xl animate-pulse delay-1000"></div>
+                </div>
+                <div className="relative p-6 md:p-8">
+                    <div className="animate-pulse space-y-4">
+                        {/* Question header skeleton */}
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-3 h-3 bg-gradient-to-r from-blue-300 to-blue-400 rounded-full"></div>
+                            <div className="h-5 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg w-32"></div>
+                        </div>
+
+                        {/* Question text skeleton */}
+                        <div className="space-y-3 mb-6">
+                            <div className="h-7 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg w-full"></div>
+                            <div className="h-7 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg w-4/5"></div>
+                            <div className="h-7 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg w-3/5"></div>
+                        </div>
+
+                        {/* Answer options skeleton */}
+                        <div className="space-y-3 mb-6">
+                            {[1, 2, 3, 4].map((i) => (
+                                <div key={i} className="relative">
+                                    <div className="h-14 bg-gradient-to-r from-slate-200 to-slate-300 rounded-2xl"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-white/50 to-transparent rounded-2xl animate-shimmer"></div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Submit button skeleton */}
+                        <div className="h-12 bg-gradient-to-r from-blue-200 to-blue-300 rounded-2xl"></div>
                     </div>
-                    <div className="h-10 bg-slate-200 rounded"></div>
                 </div>
             </div>
         );
@@ -145,24 +189,24 @@ export function QuestionCard({ question, onAnswer, onSubmit }: QuestionCardProps
     const getAnswerStyle = (answer: Answer) => {
         if (!hasSubmitted) {
             if (selectedAnswer === answer.id) {
-                return "bg-blue-50 border-blue-300 text-blue-800";
+                return "bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-50 border-blue-400 text-blue-900 shadow-lg ring-2 ring-blue-200 transform scale-[1.02]";
             }
-            return "hover:bg-slate-50 border-slate-200";
+            return "bg-gradient-to-br from-white to-slate-50 border-slate-200 text-slate-700 hover:from-slate-50 hover:to-blue-50 hover:border-blue-200 hover:shadow-md";
         }
 
         // Only show styling for the selected answer and correct styling when correct answer was selected
         if (selectedAnswer === answer.id) {
             return answer.isCorrect
-                ? "bg-green-50 border-green-300 text-green-800"
-                : "bg-red-50 border-red-300 text-red-800";
+                ? "bg-gradient-to-br from-emerald-50 via-green-100 to-emerald-50 border-emerald-400 text-emerald-900 shadow-lg ring-2 ring-emerald-200"
+                : "bg-gradient-to-br from-red-50 via-rose-100 to-red-50 border-red-400 text-red-900 shadow-lg ring-2 ring-red-200";
         }
 
         // Only highlight correct answers if the user got it right OR exceeded max attempts
         if (answer.isCorrect && (isAnswerCorrect || attempts >= maxAttempts)) {
-            return "bg-green-50 border-green-300 text-green-800";
+            return "bg-gradient-to-br from-emerald-50 via-green-50 to-emerald-50 border-emerald-300 text-emerald-800 shadow-md ring-1 ring-emerald-200";
         }
 
-        return "hover:bg-slate-50 border-slate-200";
+        return "bg-gradient-to-br from-slate-50 to-white border-slate-200 text-slate-600 opacity-70";
     };
 
     const getAnswerIcon = (answer: Answer) => {
@@ -182,113 +226,233 @@ export function QuestionCard({ question, onAnswer, onSubmit }: QuestionCardProps
     };
 
     return (
-        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
-            <div className="mb-6">
-                <h3 className="text-lg font-medium text-slate-900 leading-relaxed">
-                    {question.text}
-                </h3>
-            </div>
+        <div className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50 rounded-3xl border border-slate-200/60 shadow-xl backdrop-blur-sm group">
+            {/* Animated background elements */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/3 to-indigo-500/5"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-transparent rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-br from-purple-400/10 to-transparent rounded-full blur-2xl group-hover:scale-110 transition-transform duration-700 delay-150"></div>
 
-            <div className="space-y-3 mb-6">
-                {question.answers.map((answer) => (
+            <div className="relative p-6 md:p-8">
+                {/* Question Header */}
+                <div className="mb-6">
+                    <div className="inline-flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 text-sm font-semibold rounded-2xl mb-4 border border-blue-200/50 shadow-sm">
+                        <div className="w-2.5 h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse"></div>
+                        <span>Question</span>
+                        <div className="h-4 w-px bg-blue-300/50"></div>
+                        <span className="text-blue-700">
+                            {question.points > 1 ? `${question.points} points` : `${question.points} point`}
+                        </span>
+                    </div>
+                    <h3 className="text-xl md:text-2xl font-bold text-slate-900 leading-relaxed tracking-tight">
+                        {question.text}
+                    </h3>
+                </div>
+
+                {/* Answer Options */}
+                <div className="space-y-3 mb-6">
+                    {question.answers.map((answer, index) => (
+                        <button
+                            key={answer.id}
+                            className={cn(
+                                "w-full p-4 text-left rounded-2xl border-2 transition-all duration-300 flex items-center justify-between group/answer relative overflow-hidden",
+                                getAnswerStyle(answer),
+                                !hasSubmitted && "hover:border-blue-300 hover:shadow-lg transform hover:-translate-y-1 active:scale-[0.98]",
+                                hasSubmitted && isAnswerCorrect && "cursor-default"
+                            )}
+                            onClick={() => handleAnswerSelect(answer.id)}
+                            disabled={hasSubmitted && isAnswerCorrect}
+                        >
+                            <div className="flex items-start gap-3 relative z-10">
+                                <div className={cn(
+                                    "flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold transition-all duration-300",
+                                    selectedAnswer === answer.id && !hasSubmitted
+                                        ? "bg-blue-500 text-white shadow-lg"
+                                        : "bg-slate-200 text-slate-600 group-hover/answer:bg-blue-100 group-hover/answer:text-blue-700"
+                                )}>
+                                    {String.fromCharCode(65 + index)}
+                                </div>
+                                <span className="text-sm font-medium leading-relaxed flex-1">{answer.text}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {getAnswerIcon(answer)}
+                            </div>
+
+                            {/* Hover effect overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/10 opacity-0 group-hover/answer:opacity-100 transition-opacity duration-300"></div>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Submit button or Try Again button */}
+                {!hasSubmitted && (
+                    <div className="mb-6">
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={selectedAnswer === null}
+                            className={cn(
+                                "w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 text-white font-bold py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-base",
+                                selectedAnswer !== null && "ring-2 ring-blue-200 ring-offset-2"
+                            )}
+                        >
+                            <span className="flex items-center justify-center gap-2">
+                                Submit Answer
+                                <CheckCircle2 className="w-4 h-4" />
+                            </span>
+                        </Button>
+                    </div>
+                )}
+
+                {hasSubmitted && !isAnswerCorrect && attempts < maxAttempts && (
+                    <div className="mb-6">
+                        <Button
+                            onClick={handleTryAgain}
+                            className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white font-bold py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-base"
+                        >
+                            <span className="flex items-center justify-center gap-2">
+                                Try Again
+                                <span className="px-2 py-1 bg-white/20 rounded-lg text-sm font-semibold">
+                                    {maxAttempts - attempts} left
+                                </span>
+                            </span>
+                        </Button>
+                    </div>
+                )}
+
+                {hasSubmitted && (!isAnswerCorrect && attempts >= maxAttempts) && (
+                    <div className="mb-6 p-4 bg-gradient-to-r from-red-50 via-rose-50 to-red-50 border-2 border-red-200 rounded-2xl shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                <XCircle className="w-4 h-4 text-red-600" />
+                            </div>
+                            <div>
+                                <p className="text-red-900 font-semibold text-sm">Maximum attempts reached</p>
+                                <p className="text-red-700 text-sm">The correct answer is now highlighted above.</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Footer with controls and scoring */}
+                <div className="flex items-center justify-between pt-6 border-t border-slate-200/60">
                     <button
-                        key={answer.id}
                         className={cn(
-                            "w-full p-4 text-left rounded-lg border-2 transition-all duration-200 flex items-center justify-between group",
-                            getAnswerStyle(answer),
-                            !hasSubmitted && "hover:border-slate-300"
+                            "inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-xl transition-all duration-300",
+                            (!hasSubmitted || (!isAnswerCorrect && attempts < maxAttempts))
+                                ? "text-slate-400 cursor-not-allowed bg-slate-100"
+                                : "text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50"
                         )}
-                        onClick={() => handleAnswerSelect(answer.id)}
-                        disabled={hasSubmitted && isAnswerCorrect} // Only disable if correct answer was submitted
+                        onClick={() => setShowExplanation(!showExplanation)}
+                        disabled={!hasSubmitted || (!isAnswerCorrect && attempts < maxAttempts)}
                     >
-                        <span className="text-sm font-medium">{answer.text}</span>
-                        {getAnswerIcon(answer)}
+                        <Info className="w-3 h-3" />
+                        {showExplanation ? "Hide" : "Show"} Explanation
                     </button>
-                ))}
-            </div>
 
-            {/* Submit button or Try Again button */}
-            {!hasSubmitted && (
-                <div className="mb-6">
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={selectedAnswer === null}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                        Submit Answer
-                    </Button>
+                    {hasSubmitted && (
+                        <div className="text-xs font-bold">
+                            {earnedPoints > 0 ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 rounded-xl shadow-sm border border-emerald-200">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    <span>+{earnedPoints} point{earnedPoints > 1 ? 's' : ''}</span>
+                                    <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
+                                </div>
+                            ) : (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-100 to-rose-100 text-red-800 rounded-xl shadow-sm border border-red-200">
+                                    <XCircle className="w-3 h-3" />
+                                    <span>0 points</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
-            )}
 
-            {hasSubmitted && !isAnswerCorrect && attempts < maxAttempts && (
-                <div className="mb-6">
-                    <Button
-                        onClick={handleTryAgain}
-                        className="w-full bg-orange-600 hover:bg-orange-700"
-                    >
-                        Try Again ({maxAttempts - attempts} attempts left)
-                    </Button>
-                </div>
-            )}
+                {/* Navigation Section */}
+                {(onNext || onPrevious) && (
+                    <div className="mt-6 flex items-center justify-between">
+                        <Button
+                            variant="outline"
+                            onClick={onPrevious}
+                            disabled={isFirstQuestion || !onPrevious}
+                            className="bg-white/80 hover:bg-white border-slate-200"
+                        >
+                            Previous
+                        </Button>
 
-            {hasSubmitted && (!isAnswerCorrect && attempts >= maxAttempts) && (
-                <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-800 text-center">
-                        Maximum attempts reached. The correct answer is now shown.
-                    </p>
-                </div>
-            )}
+                        <div className="text-sm text-slate-600 text-center flex-1 mx-4">
+                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${canProceed
+                                ? 'bg-green-50 text-green-700 border border-green-200'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                }`}>
+                                <div className={`w-2 h-2 rounded-full ${canProceed ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                                <span className="font-medium">
+                                    {canProceed ? "Ready to proceed!" : "Submit your answer to continue"}
+                                </span>
+                            </div>
+                        </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-                <button
-                    className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
-                    onClick={() => setShowExplanation(!showExplanation)}
-                    disabled={!hasSubmitted || (!isAnswerCorrect && attempts < maxAttempts)}
-                >
-                    <Info className="w-4 h-4" />
-                    {showExplanation ? "Hide" : "Show"} Explanation
-                </button>
-
-                {hasSubmitted && (
-                    <div className="text-sm font-medium">
-                        {earnedPoints > 0 ? (
-                            <span className="text-green-600">+{earnedPoints} point{earnedPoints > 1 ? 's' : ''}</span>
+                        {canProceed && onNext ? (
+                            <Button
+                                onClick={onNext}
+                                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg"
+                            >
+                                {isLastQuestion ? "Finish Quiz" : "Next Question"}
+                            </Button>
                         ) : (
-                            <span className="text-red-600">0 points</span>
+                            <Button
+                                disabled
+                                className="bg-slate-200 text-slate-400 cursor-not-allowed"
+                            >
+                                {isLastQuestion ? "Finish Quiz" : "Next Question"}
+                            </Button>
                         )}
                     </div>
                 )}
-            </div>
 
-            {showExplanation && question.explanation && hasSubmitted && (isAnswerCorrect || attempts >= maxAttempts) && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800 leading-relaxed">
-                        <strong>Explanation:</strong> {question.explanation}
-                    </p>
-                    <div className="mt-3 pt-3 border-t border-blue-200">
-                        <div className="flex items-center gap-3">
-                            {question.reference && (
-                                <a
-                                    href={question.reference}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                                >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Learn more
-                                </a>
-                            )}
-                            <button
-                                onClick={handleAskChatGPT}
-                                className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-800 hover:underline transition-colors"
-                            >
-                                <MessageSquare className="w-4 h-4" />
-                                Ask AI Assistant
-                            </button>
+                {/* Enhanced Explanation Section */}
+                {showExplanation && question.explanation && hasSubmitted && (isAnswerCorrect || attempts >= maxAttempts) && (
+                    <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200/50 rounded-2xl shadow-lg relative overflow-hidden">
+                        {/* Background decoration */}
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-200/30 to-transparent rounded-full blur-2xl"></div>
+
+                        <div className="relative">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center">
+                                    <Info className="w-3 h-3 text-white" />
+                                </div>
+                                <h4 className="text-base font-bold text-blue-900">Explanation</h4>
+                            </div>
+
+                            <p className="text-blue-900 leading-relaxed mb-4 text-sm">
+                                {question.explanation}
+                            </p>
+
+                            <div className="pt-4 border-t border-blue-200/50">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {question.reference && (
+                                        <a
+                                            href={question.reference}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/70 hover:bg-white text-blue-600 hover:text-blue-800 rounded-xl border border-blue-200 transition-all duration-300 hover:shadow-md font-medium text-xs"
+                                        >
+                                            <ExternalLink className="w-3 h-3" />
+                                            Learn more
+                                        </a>
+                                    )}
+                                    <button
+                                        onClick={handleAskChatGPT}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl transition-all duration-300 hover:shadow-md font-medium text-xs transform hover:-translate-y-0.5"
+                                    >
+                                        <MessageSquare className="w-3 h-3" />
+                                        Ask AI Assistant
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }
