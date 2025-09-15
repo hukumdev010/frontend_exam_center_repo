@@ -63,6 +63,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -89,10 +90,12 @@ export default function Home() {
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
       setSearchResults(null);
+      setSearchLoading(false);
       return;
     }
 
     try {
+      setSearchLoading(true);
       setError(null);
       const response = await fetch(`${API_ENDPOINTS.searchCertifications}?q=${encodeURIComponent(query)}`);
       if (!response.ok) {
@@ -102,11 +105,15 @@ export default function Home() {
       setSearchResults(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
+      setSearchResults(null);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
   const handleClearSearch = () => {
     setSearchResults(null);
+    setSearchLoading(false);
     setError(null);
   };
 
@@ -256,7 +263,18 @@ export default function Home() {
               />
             </div>
 
-            {searchResults && (
+            {searchLoading && (
+              <div className="mt-8">
+                <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                    <p className="text-slate-600">Searching...</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {searchResults && !searchLoading && (
               <div className="mt-8">
                 <SearchResults
                   results={searchResults.results}
@@ -267,7 +285,7 @@ export default function Home() {
               </div>
             )}
 
-            {error && searchResults === null && (
+            {error && searchResults === null && !searchLoading && (
               <div className="mt-8 max-w-2xl mx-auto">
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-red-600 text-center">Error: {error}</p>
@@ -276,7 +294,7 @@ export default function Home() {
             )}
           </div>
 
-          {!searchResults && (
+          {!searchResults && !searchLoading && (
             <div>
               <div className="text-center mb-8">
                 <h3 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-4">

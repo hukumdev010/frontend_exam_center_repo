@@ -10,6 +10,7 @@ import { useAIAssistant } from "./AIAssistantContext";
 type Answer = {
     id: number;
     text: string;
+    question_id: number;
     isCorrect: boolean;
 };
 
@@ -24,7 +25,7 @@ type Question = {
 
 interface QuestionCardProps {
     question?: Question;
-    onAnswer: (isCorrect: boolean, points: number) => void;
+    onAnswer: (isCorrect: boolean) => void;
     onSubmit: (isCorrect: boolean, canProceed: boolean) => void;
     // Navigation props
     onNext?: () => void;
@@ -53,21 +54,45 @@ export function QuestionCard({
     const [hasSubmitted, setHasSubmitted] = useState(false);
     const [earnedPoints, setEarnedPoints] = useState(0);
     const [isAnswerCorrect, setIsAnswerCorrect] = useState(false);
+    const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(null);
     const [attempts, setAttempts] = useState(0);
     const [maxAttempts] = useState(3); // Allow up to 3 attempts
+    const [randomizedAnswers, setRandomizedAnswers] = useState<Answer[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // AI Assistant context
     const { showLoading, showResponse } = useAIAssistant();
 
+    // Shuffle array function - Fisher-Yates shuffle algorithm
+    const shuffleArray = <T,>(array: T[]): T[] => {
+        const shuffled = [...array];
+
+        // Fisher-Yates shuffle algorithm for better randomization
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        // Ensure the order actually changed for debugging
+
+        return shuffled;
+    };
+
     // Reset component state when question changes
     useEffect(() => {
         if (!question) return;
+
+        // Randomize answers order
+        setRandomizedAnswers(shuffleArray(question.answers));
+
         setSelectedAnswer(null);
         setShowExplanation(false);
         setHasSubmitted(false);
         setEarnedPoints(0);
         setIsAnswerCorrect(false);
+        setCorrectAnswerId(null);
         setAttempts(0);
+        setIsSubmitting(false);
     }, [question]);
 
     // Return loading state if question is not available
@@ -121,32 +146,87 @@ export function QuestionCard({
         }
     };
 
-    const handleSubmit = () => {
-        if (selectedAnswer === null) return;
+    const handleSubmit = async () => {
+        if (selectedAnswer === null || isSubmitting) return;
 
-        const selectedAnswerObj = question.answers.find(a => a.id === selectedAnswer);
-        if (!selectedAnswerObj) return;
-
-        setHasSubmitted(true);
+        setIsSubmitting(true);
         setAttempts(prev => prev + 1);
 
-        const points = selectedAnswerObj.isCorrect ? question.points : 0;
-        setEarnedPoints(points);
-        setIsAnswerCorrect(selectedAnswerObj.isCorrect);
+        try {
+            // Get the certification slug from the URL or pass it as a prop
+            const urlPath = window.location.pathname;
+            const certificationSlug = urlPath.split('/').pop() || 'aws-cloud-practitioner';
 
-        // Only show explanation if answer is correct
-        if (selectedAnswerObj.isCorrect) {
-            setShowExplanation(true);
+            // Call the verification API
+            const token = localStorage.getItem('auth_token');
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`${API_ENDPOINTS.base}/api/certifications/${certificationSlug}/verify-answer`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    question_id: question.id,
+                    answer_id: selectedAnswer
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to verify answer');
+            }
+
+            const result = await response.json();
+
+            // Only now set hasSubmitted to true (after API verification)
+            setHasSubmitted(true);
+            setIsAnswerCorrect(result.is_correct);
+            setEarnedPoints(result.points_earned);
+
+            // After API verification, find and set the correct answer ID from the question data
+            const correctAnswer = question.answers.find(answer => answer.isCorrect);
+            if (correctAnswer) {
+                setCorrectAnswerId(correctAnswer.id);
+            }
+
+            // Show explanation regardless of correctness
+            if (result.explanation) {
+                setShowExplanation(true);
+            }
+
+            onAnswer(result.is_correct);
+            onSubmit(result.is_correct, result.is_correct || attempts >= maxAttempts);
+
+        } catch (error) {
+            console.error('Error verifying answer:', error);
+            // Fallback to client-side verification (shouldn't happen)
+            setHasSubmitted(true);
+            setIsAnswerCorrect(false);
+            setEarnedPoints(0);
+
+            // Still set the correct answer ID for fallback
+            const correctAnswer = question.answers.find(answer => answer.isCorrect);
+            if (correctAnswer) {
+                setCorrectAnswerId(correctAnswer.id);
+            }
+
+            onAnswer(false);
+            onSubmit(false, attempts >= maxAttempts);
+        } finally {
+            setIsSubmitting(false);
         }
-
-        onAnswer(selectedAnswerObj.isCorrect, points);
-        onSubmit(selectedAnswerObj.isCorrect, selectedAnswerObj.isCorrect || attempts >= maxAttempts);
     };
 
     const handleTryAgain = () => {
         setHasSubmitted(false);
         setSelectedAnswer(null);
         setShowExplanation(false);
+        setIsSubmitting(false);
+        setCorrectAnswerId(null);
     };
 
     const handleAskChatGPT = async () => {
@@ -194,16 +274,17 @@ export function QuestionCard({
             return "bg-gradient-to-br from-white to-slate-50 border-slate-200 text-slate-700 hover:from-slate-50 hover:to-blue-50 hover:border-blue-200 hover:shadow-md";
         }
 
-        // Only show styling for the selected answer and correct styling when correct answer was selected
+        // After submission, show results
         if (selectedAnswer === answer.id) {
-            return answer.isCorrect
+            // Show selected answer styling
+            return isAnswerCorrect
                 ? "bg-gradient-to-br from-emerald-50 via-green-100 to-emerald-50 border-emerald-400 text-emerald-900 shadow-lg ring-2 ring-emerald-200"
                 : "bg-gradient-to-br from-red-50 via-rose-100 to-red-50 border-red-400 text-red-900 shadow-lg ring-2 ring-red-200";
         }
 
-        // Only highlight correct answers if the user got it right OR exceeded max attempts
-        if (answer.isCorrect && (isAnswerCorrect || attempts >= maxAttempts)) {
-            return "bg-gradient-to-br from-emerald-50 via-green-50 to-emerald-50 border-emerald-300 text-emerald-800 shadow-md ring-1 ring-emerald-200";
+        // If the user selected a wrong answer, highlight the correct answer
+        if (!isAnswerCorrect && correctAnswerId === answer.id) {
+            return "bg-gradient-to-br from-emerald-50 via-green-100 to-emerald-50 border-emerald-400 text-emerald-900 shadow-lg ring-2 ring-emerald-200";
         }
 
         return "bg-gradient-to-br from-slate-50 to-white border-slate-200 text-slate-600 opacity-70";
@@ -212,14 +293,19 @@ export function QuestionCard({
     const getAnswerIcon = (answer: Answer) => {
         if (!hasSubmitted) return null;
 
-        // Only show correct answer icon if user got it right OR exceeded max attempts
-        if (answer.isCorrect && (isAnswerCorrect || attempts >= maxAttempts)) {
+        // Show checkmark for selected correct answer
+        if (selectedAnswer === answer.id && isAnswerCorrect) {
             return <CheckCircle2 className="w-5 h-5 text-green-600" />;
         }
 
-        // Show X only for the selected wrong answer
-        if (selectedAnswer === answer.id && !answer.isCorrect) {
+        // Show X for selected wrong answer
+        if (selectedAnswer === answer.id && !isAnswerCorrect) {
             return <XCircle className="w-5 h-5 text-red-600" />;
+        }
+
+        // Show checkmark for the correct answer when user selected wrong
+        if (!isAnswerCorrect && correctAnswerId === answer.id) {
+            return <CheckCircle2 className="w-5 h-5 text-green-600" />;
         }
 
         return null;
@@ -250,7 +336,7 @@ export function QuestionCard({
 
                 {/* Answer Options */}
                 <div className="space-y-3 mb-6">
-                    {question.answers.map((answer, index) => (
+                    {randomizedAnswers.map((answer, index) => (
                         <button
                             key={answer.id}
                             className={cn(
@@ -289,14 +375,14 @@ export function QuestionCard({
                     <div className="mb-6">
                         <Button
                             onClick={handleSubmit}
-                            disabled={selectedAnswer === null}
+                            disabled={selectedAnswer === null || isSubmitting}
                             className={cn(
                                 "w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 text-white font-bold py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-base",
-                                selectedAnswer !== null && "ring-2 ring-blue-200 ring-offset-2"
+                                selectedAnswer !== null && !isSubmitting && "ring-2 ring-blue-200 ring-offset-2"
                             )}
                         >
                             <span className="flex items-center justify-center gap-2">
-                                Submit Answer
+                                {isSubmitting ? 'Verifying...' : 'Submit Answer'}
                                 <CheckCircle2 className="w-4 h-4" />
                             </span>
                         </Button>

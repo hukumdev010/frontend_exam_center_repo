@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface SearchBarProps {
     onSearch: (query: string) => void;
@@ -14,6 +15,15 @@ interface SearchBarProps {
 
 export function SearchBar({ onSearch, onClear, placeholder = "Search certifications...", value = "" }: SearchBarProps) {
     const [searchQuery, setSearchQuery] = useState(value);
+
+    // Debounced search with 500ms delay
+    const debouncedSearch = useDebounce((query: string) => {
+        if (query.trim()) {
+            onSearch(query.trim());
+        } else {
+            onClear();
+        }
+    }, 500);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,11 +41,14 @@ export function SearchBar({ onSearch, onClear, placeholder = "Search certificati
         const query = e.target.value;
         setSearchQuery(query);
 
-        // If user clears the search, trigger onClear
-        if (query === "") {
-            onClear();
-        }
+        // Trigger debounced search
+        debouncedSearch(query);
     };
+
+    // Update internal state when value prop changes
+    useEffect(() => {
+        setSearchQuery(value);
+    }, [value]);
 
     return (
         <form onSubmit={handleSearch} className="relative w-full">

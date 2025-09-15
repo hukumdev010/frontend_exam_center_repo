@@ -87,7 +87,7 @@ function QuizPageContent() {
     // Prevent hydration mismatch by not rendering until mounted
     if (!mounted) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+            <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
                 <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-blue-100/50 shadow-xl p-8 max-w-md w-full mx-4">
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
@@ -95,7 +95,7 @@ function QuizPageContent() {
                         <p className="text-slate-600">Preparing your certification exam...</p>
                     </div>
                 </div>
-            </div>
+            </main>
         );
     }
 

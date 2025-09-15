@@ -170,25 +170,24 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
     const correctAnswers = score;
     const totalQuestions = questions.length;
 
-    const handleAnswer = (isCorrect: boolean, points: number) => {
+    const handleAnswer = (isCorrect: boolean) => {
         if (answeredQuestions.has(currentQuestion)) return;
 
         const newAnsweredQuestions = new Set(answeredQuestions).add(currentQuestion);
         const newScore = isCorrect ? score + 1 : score;
-        const newTotalPoints = isCorrect ? totalPoints + points : totalPoints;
 
-        // Update session score (live scoring)
+        // Update session score (live scoring) - but don't add points here since API handles it
         if (isCorrect) {
             setSessionScore(prev => prev + 1);
         }
 
         setAnsweredQuestions(newAnsweredQuestions);
         setScore(newScore);
-        setTotalPoints(newTotalPoints);
+        // Note: totalPoints will be managed by the backend API now, not here
 
-        // Save state
-        saveLocalState(newScore, newAnsweredQuestions, isCompleted, newTotalPoints);
-        saveProgress(currentQuestion, newScore, newTotalPoints, isCompleted);
+        // Save state (without points since API manages them)
+        saveLocalState(newScore, newAnsweredQuestions, isCompleted, 0);
+        // Don't save progress here since the verify-answer API handles it
     };
 
     const handleSubmit = (isCorrect: boolean, canProceed: boolean) => {
