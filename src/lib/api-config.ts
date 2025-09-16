@@ -7,8 +7,8 @@ export const API_ENDPOINTS = {
   categoryCertifications: (slug: string) => `${API_BASE_URL}/api/categories/${slug}/certifications`,
   certifications: (slug: string) => `${API_BASE_URL}/api/certifications/${slug}`,
   searchCertifications: `${API_BASE_URL}/api/certifications/search`,
-  progress: `${API_BASE_URL}/api/progress/`,
-  quizAttempts: `${API_BASE_URL}/api/quiz-attempts/`,
+  progress: `${API_BASE_URL}/api/progress`,
+  quizAttempts: `${API_BASE_URL}/api/quiz-attempts`,
   auth: {
     google: `${API_BASE_URL}/api/auth/google`,
     me: `${API_BASE_URL}/api/auth/me`,
