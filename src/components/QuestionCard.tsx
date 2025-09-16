@@ -6,22 +6,7 @@ import { CheckCircle2, XCircle, Info, ExternalLink, MessageSquare } from "lucide
 import { Button } from "./ui/button";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { useAIAssistant } from "./AIAssistantContext";
-
-type Answer = {
-    id: number;
-    text: string;
-    question_id: number;
-    isCorrect: boolean;
-};
-
-type Question = {
-    id: number;
-    text: string;
-    explanation?: string;
-    reference?: string;
-    points: number;
-    answers: Answer[];
-};
+import { Question, Answer } from "../types/quiz";
 
 interface QuestionCardProps {
     question?: Question;

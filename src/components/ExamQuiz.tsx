@@ -9,20 +9,7 @@ import { RotateCcw, Trophy, GraduationCap, Maximize2, X } from "lucide-react";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { AIAssistantProvider } from "./AIAssistantContext";
 import { AIAssistantPanel } from "./AIAssistantPanel";
-
-type Answer = {
-    id: number;
-    text: string;
-    isCorrect: boolean;
-};
-
-type Question = {
-    id: number;
-    text: string;
-    explanation?: string;
-    points: number;
-    answers: Answer[];
-};
+import { Question } from "../types/quiz";
 
 interface ExamQuizProps {
     questions: Question[];

@@ -4,22 +4,9 @@ import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ExamQuiz } from "@/components/ExamQuiz";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Award, Clock, Target, BookOpen, Users } from "lucide-react";
+import { ArrowLeft, Award, Clock, Target, BookOpen } from "lucide-react";
 import { API_ENDPOINTS } from "@/lib/api-config";
-
-type Question = {
-    id: number;
-    text: string;
-    explanation?: string;
-    points: number;
-    answers: Answer[];
-};
-
-type Answer = {
-    id: number;
-    text: string;
-    isCorrect: boolean;
-};
+import { Question } from "@/types/quiz";
 
 type Certification = {
     id: number;

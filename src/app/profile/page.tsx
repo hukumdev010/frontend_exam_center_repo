@@ -7,8 +7,6 @@ import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Trophy, Target, Clock, BookOpen, Award, TrendingUp } from "lucide-react"
 import Link from "next/link"
-import { API_ENDPOINTS } from "@/lib/api-config"
-import { authService } from "@/lib/auth-service"
 
 interface UserProgress {
     id: string
