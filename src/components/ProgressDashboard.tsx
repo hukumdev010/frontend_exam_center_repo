@@ -1,11 +1,10 @@
 "use client"
 
 import { useSession } from "@/lib/useAuth"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Trophy, Clock, Target } from "lucide-react"
-import { authService } from "@/lib/auth-service"
 import { API_ENDPOINTS } from "@/lib/api-config"
 
 interface UserProgress {
@@ -31,25 +30,17 @@ interface ProgressDashboardProps {
     onContinueQuiz: (slug: string) => void
 }
 
-export function ProgressDashboard({ onContinueQuiz }: ProgressDashboardProps) {
-    const { data: session } = useSession()
+export default function ProgressDashboard({ onContinueQuiz }: ProgressDashboardProps) {
+    const { data: session, getAuthHeaders } = useSession()
     const [progress, setProgress] = useState<UserProgress[]>([])
-    const [loading, setLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(true)
 
-    useEffect(() => {
-        if (session?.user?.id) {
-            // TODO: Uncomment when progress endpoint is ready
-            // fetchProgress()
-        } else {
-            setLoading(false)
-        }
-    }, [session?.user?.id])
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const fetchProgress = async () => {
+    const fetchProgress = useCallback(async () => {
         console.log('ProgressDashboard: fetchProgress called');
         try {
-            const response = await authService.apiCall(API_ENDPOINTS.progress)
+            const response = await fetch(API_ENDPOINTS.progress, {
+                headers: getAuthHeaders()
+            })
             console.log('ProgressDashboard: API response status:', response.status);
             if (response.ok) {
                 const data = await response.json()
@@ -61,15 +52,21 @@ export function ProgressDashboard({ onContinueQuiz }: ProgressDashboardProps) {
         } catch (error) {
             console.error('Failed to fetch progress:', error)
         } finally {
-            setLoading(false)
+            setIsLoading(false)
         }
-    }
+    }, [getAuthHeaders])
+
+    useEffect(() => {
+        if (session?.user?.id) {
+            fetchProgress()
+        }
+    }, [session?.user?.id]) //disable-next-line react-hooks/exhaustive-deps
 
     if (!session) {
         return null
     }
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="space-y-6">
                 {[1, 2, 3].map((i) => (

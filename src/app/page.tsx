@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useAuth";
-import { ProgressDashboard } from "@/components/ProgressDashboard";
+import ProgressDashboard from "@/components/ProgressDashboard";
 import { AuthButton } from "@/components/AuthButtonWrapper";
 import { SearchBar } from "@/components/SearchBar";
 import { CategoryScroller } from "@/components/CategoryScroller";
@@ -221,12 +221,20 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-4">
               {mounted && session && (
-                <Link href="/profile">
-                  <Button variant="outline" size="sm" className="flex items-center gap-2 border-blue-200 hover:bg-blue-50 text-blue-700">
-                    <User className="w-4 h-4" />
-                    Profile
-                  </Button>
-                </Link>
+                <>
+                  <Link href="/dashboard">
+                    <Button variant="outline" size="sm" className="flex items-center gap-2 border-blue-200 hover:bg-blue-50 text-blue-700">
+                      <Award className="w-4 h-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Link href="/profile">
+                    <Button variant="outline" size="sm" className="flex items-center gap-2 border-blue-200 hover:bg-blue-50 text-blue-700">
+                      <User className="w-4 h-4" />
+                      Profile
+                    </Button>
+                  </Link>
+                </>
               )}
               <AuthButton />
             </div>

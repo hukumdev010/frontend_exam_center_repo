@@ -26,7 +26,10 @@ export function useAuth() {
     isAuthenticated: authState.isAuthenticated,
     isLoading: authState.isLoading,
     signIn: () => authService.signInWithGoogle(),
-    signOut: () => authService.signOut()
+    signOut: () => authService.signOut(),
+    getToken: () => authService.getToken(),
+    getAuthHeaders: () => authService.getAuthHeaders(),
+    apiCall: (url: string, options?: RequestInit) => authService.apiCall(url, options)
   }
 }
 
@@ -35,7 +38,14 @@ export function useSession() {
   const auth = useAuth()
   
   return {
-    data: auth.isAuthenticated ? { user: auth.user } : null,
-    status: auth.isLoading ? 'loading' : auth.isAuthenticated ? 'authenticated' : 'unauthenticated'
+    data: auth.isAuthenticated ? { 
+      user: auth.user,
+      access_token: auth.getToken() // Add access_token for compatibility
+    } : null,
+    status: auth.isLoading ? 'loading' : auth.isAuthenticated ? 'authenticated' : 'unauthenticated',
+    // Expose auth methods
+    getToken: auth.getToken,
+    getAuthHeaders: auth.getAuthHeaders,
+    apiCall: auth.apiCall
   }
 }

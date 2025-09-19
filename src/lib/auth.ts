@@ -75,7 +75,12 @@ class AuthService {
     if (token) {
       try {
         // Validate token with backend using /me endpoint
-        const response = await fetch(`${API_ENDPOINTS.auth.me}?token=${token}`)
+        const response = await fetch(API_ENDPOINTS.auth.me, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
         
         if (response.ok) {
           const userData = await response.json()
@@ -133,6 +138,36 @@ class AuthService {
     return this.state
   }
 
+  // Token access methods for API calls
+  getToken(): string | null {
+    return this.getStorageItem('auth_token')
+  }
+
+  getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+
+    const token = this.getToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    return headers
+  }
+
+  async apiCall(url: string, options: RequestInit = {}) {
+    const headers = {
+      ...this.getAuthHeaders(),
+      ...options.headers,
+    }
+
+    return fetch(url, {
+      ...options,
+      headers,
+    })
+  }
+
   // Update auth state (called by callback page)
   updateAuthState(authenticated: boolean, user: User | null = null) {
     this.state = {
@@ -187,8 +222,12 @@ class AuthService {
       // Call logout endpoint if we have a token
       if (token) {
         try {
-          await fetch(`${API_ENDPOINTS.auth.logout}?token=${token}`, {
-            method: 'POST'
+          await fetch(API_ENDPOINTS.auth.logout, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
           })
         } catch (error) {
           console.warn('Logout endpoint failed:', error)

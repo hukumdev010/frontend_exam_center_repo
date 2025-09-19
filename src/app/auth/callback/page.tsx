@@ -3,7 +3,6 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '@/lib/auth';
-import { authService as tokenService } from '@/lib/auth-service';
 import { API_ENDPOINTS } from '@/lib/api-config';
 
 function AuthCallbackContent() {
@@ -33,11 +32,13 @@ function AuthCallbackContent() {
                 // Store the token and get user info
                 localStorage.setItem('auth_token', token);
 
-                // Update the auth service with the new token
-                tokenService.setToken(token);
-
                 // Get user info from backend
-                const userResponse = await fetch(`${API_ENDPOINTS.auth.me}?token=${token}`);
+                const userResponse = await fetch(API_ENDPOINTS.auth.me, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
                 if (userResponse.ok) {
                     const userData = await userResponse.json();
                     localStorage.setItem('user_data', JSON.stringify(userData));

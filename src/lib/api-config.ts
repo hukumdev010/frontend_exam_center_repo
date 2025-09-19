@@ -9,6 +9,14 @@ export const API_ENDPOINTS = {
   searchCertifications: `${API_BASE_URL}/api/certifications/search`,
   progress: `${API_BASE_URL}/api/progress`,
   quizAttempts: `${API_BASE_URL}/api/quiz-attempts`,
+  teachers: {
+    me: `${API_BASE_URL}/api/teachers/me`,
+  },
+  sessions: {
+    myTeaching: `${API_BASE_URL}/api/sessions/my/teaching`,
+    myBookings: `${API_BASE_URL}/api/sessions/my/bookings`,
+    available: `${API_BASE_URL}/api/sessions/available`,
+  },
   auth: {
     google: `${API_BASE_URL}/api/auth/google`,
     me: `${API_BASE_URL}/api/auth/me`,
