@@ -19,7 +19,9 @@ import {
     XCircle,
     AlertCircle,
     Settings,
-    ArrowLeft
+    ArrowLeft,
+    BookOpen,
+    GraduationCap
 } from "lucide-react";
 import Link from "next/link";
 import { API_ENDPOINTS } from "@/lib/api-config";
@@ -176,8 +178,18 @@ export default function TeacherDashboard() {
                                 </Button>
                             </Link>
                             <div>
-                                <h1 className="text-3xl font-bold text-gray-900">Teacher Dashboard</h1>
-                                <p className="text-gray-600 mt-2">Manage your teaching sessions and help students learn</p>
+                                <h1 className="text-3xl font-bold text-gray-900">Teaching Dashboard</h1>
+                                <p className="text-gray-600 mt-2">Your teaching features - continue learning while helping others</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <Badge variant="outline" className="text-xs">
+                                        <BookOpen className="w-3 h-3 mr-1" />
+                                        Student Features Active
+                                    </Badge>
+                                    <Badge variant="default" className="text-xs">
+                                        <GraduationCap className="w-3 h-3 mr-1" />
+                                        Teaching Enabled
+                                    </Badge>
+                                </div>
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -243,9 +255,10 @@ export default function TeacherDashboard() {
 
                 {/* Main Content Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-4">
+                    <TabsList className="grid w-full grid-cols-5">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <TabsTrigger value="sessions">Sessions</TabsTrigger>
+                        <TabsTrigger value="learning">My Learning</TabsTrigger>
+                        <TabsTrigger value="sessions">Teaching</TabsTrigger>
                         <TabsTrigger value="qualifications">Qualifications</TabsTrigger>
                         <TabsTrigger value="students">Students</TabsTrigger>
                     </TabsList>
@@ -311,7 +324,7 @@ export default function TeacherDashboard() {
                         </Card>
 
                         {/* Quick Actions */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                                 <Link href="/dashboard/teacher/sessions/create">
                                     <CardHeader>
@@ -320,6 +333,18 @@ export default function TeacherDashboard() {
                                             Create Session
                                         </CardTitle>
                                         <CardDescription>Schedule a new teaching session</CardDescription>
+                                    </CardHeader>
+                                </Link>
+                            </Card>
+
+                            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                                <Link href="/dashboard/student">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <BookOpen className="w-5 h-5 text-blue-500" />
+                                            Student Portal
+                                        </CardTitle>
+                                        <CardDescription>Continue your own learning journey</CardDescription>
                                     </CardHeader>
                                 </Link>
                             </Card>
@@ -341,13 +366,79 @@ export default function TeacherDashboard() {
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <Award className="w-5 h-5 text-orange-500" />
-                                            Gain Qualifications
+                                            Continue Learning
                                         </CardTitle>
-                                        <CardDescription>Take quizzes to qualify for new subjects</CardDescription>
+                                        <CardDescription>Take quizzes to gain more qualifications</CardDescription>
                                     </CardHeader>
                                 </Link>
                             </Card>
                         </div>
+                    </TabsContent>
+
+                    <TabsContent value="learning" className="space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-bold">My Learning Journey</h2>
+                            <p className="text-gray-600">Continue your own education while teaching others</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                                <Link href="/dashboard/student">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <BookOpen className="w-5 h-5 text-blue-500" />
+                                            Student Dashboard
+                                        </CardTitle>
+                                        <CardDescription>View your complete learning progress and achievements</CardDescription>
+                                    </CardHeader>
+                                </Link>
+                            </Card>
+
+                            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                                <Link href="/quiz">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Award className="w-5 h-5 text-green-500" />
+                                            Take Quizzes
+                                        </CardTitle>
+                                        <CardDescription>Continue practicing and earning new certifications</CardDescription>
+                                    </CardHeader>
+                                </Link>
+                            </Card>
+
+                            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                                <Link href="/sessions">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Users className="w-5 h-5 text-orange-500" />
+                                            Find Teachers
+                                        </CardTitle>
+                                        <CardDescription>Book sessions to learn from other qualified teachers</CardDescription>
+                                    </CardHeader>
+                                </Link>
+                            </Card>
+                        </div>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Learning Reminder</CardTitle>
+                                <CardDescription>As a teacher, staying current with your knowledge helps you teach better</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div className="flex items-start gap-3">
+                                        <BookOpen className="w-5 h-5 text-blue-600 mt-0.5" />
+                                        <div>
+                                            <h4 className="font-medium text-blue-900 mb-1">Keep Learning</h4>
+                                            <p className="text-sm text-blue-700">
+                                                The best teachers are lifelong learners. Continue taking quizzes and earning certifications
+                                                to expand what you can teach and stay sharp in your existing subjects.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </TabsContent>
 
                     <TabsContent value="sessions" className="space-y-6">
@@ -429,7 +520,7 @@ export default function TeacherDashboard() {
                     <TabsContent value="qualifications" className="space-y-6">
                         <div>
                             <h2 className="text-2xl font-bold">Your Qualifications</h2>
-                            <p className="text-gray-600">Subjects you're qualified to teach (90%+ score required)</p>
+                            <p className="text-gray-600">Subjects you&apos;re qualified to teach (90%+ score required)</p>
                         </div>
 
                         {teacherProfile.qualifications.length === 0 ? (

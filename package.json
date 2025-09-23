@@ -12,6 +12,7 @@
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.879.0",
     "@google/generative-ai": "^0.24.1",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",

@@ -81,14 +81,6 @@ export default function StudentDashboard() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("overview");
 
-    useEffect(() => {
-        if (status !== 'loading' && status === 'unauthenticated') {
-            router.push("/auth");
-        } else if (status === 'authenticated' && session) {
-            loadStudentData();
-        }
-    }, [session, status, router, loadStudentData]);
-
     const loadStudentData = useCallback(async () => {
         try {
             setLoading(true);
@@ -128,6 +120,17 @@ export default function StudentDashboard() {
             setLoading(false);
         }
     }, [getAuthHeaders]);
+
+    useEffect(() => {
+        if (status !== 'loading' && status === 'unauthenticated') {
+            router.push("/auth");
+        } else if (status === 'authenticated' && session) {
+            loadStudentData();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [session?.user?.id]);
+
+
 
     const getProgressStats = () => {
         const totalCertifications = progress.length;
@@ -174,14 +177,14 @@ export default function StudentDashboard() {
                                 </Button>
                             </Link>
                             <div>
-                                <h1 className="text-3xl font-bold text-gray-900">Student Dashboard</h1>
-                                <p className="text-gray-600 mt-2">Track your progress and continue learning</p>
+                                <h1 className="text-3xl font-bold text-gray-900">Learning Portal</h1>
+                                <p className="text-gray-600 mt-2">Your comprehensive learning dashboard - track progress and continue growing</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
                             <Badge className="bg-blue-100 text-blue-800">
                                 <BookOpen className="w-4 h-4 mr-1" />
-                                Student
+                                Learning Mode
                             </Badge>
                             <Link href="/profile">
                                 <Button variant="outline" size="sm">
@@ -261,7 +264,7 @@ export default function StudentDashboard() {
                                     <div className="text-center py-8">
                                         <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                                         <p className="text-gray-500 mb-4">No progress yet. Start your learning journey!</p>
-                                        <Link href="/category">
+                                        <Link href="/">
                                             <Button>Browse Certifications</Button>
                                         </Link>
                                     </div>
@@ -365,7 +368,7 @@ export default function StudentDashboard() {
                         {/* Quick Actions */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                                <Link href="/category">
+                                <Link href="/dashboard/categories">
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <BookOpen className="w-5 h-5 text-blue-500" />
@@ -414,7 +417,7 @@ export default function StudentDashboard() {
                                     <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                                     <h3 className="text-xl font-medium mb-2">No progress yet</h3>
                                     <p className="text-gray-600 mb-6">Start taking quizzes to track your progress</p>
-                                    <Link href="/category">
+                                    <Link href="/dashboard/categories">
                                         <Button>Browse Certifications</Button>
                                     </Link>
                                 </CardContent>

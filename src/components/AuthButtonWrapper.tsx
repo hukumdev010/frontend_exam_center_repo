@@ -11,13 +11,15 @@ export function AuthButton() {
     }, [])
 
     if (!mounted) {
-        // Render loading state during SSR and initial client render
         return (
-            <div className="flex items-center gap-2">
-                <div className="h-10 w-24 bg-blue-100 animate-pulse rounded-xl flex items-center justify-center">
-                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-                </div>
-            </div>
+            <button
+                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 
+                         text-white font-medium px-6 py-2 rounded-xl shadow-lg hover:shadow-xl 
+                         transition-all duration-200 hover-lift"
+                disabled
+            >
+                Sign in with Google
+            </button>
         )
     }
 
