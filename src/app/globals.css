@@ -227,3 +227,13 @@
   background-size: 200px 100%;
   animation: shimmer 2s infinite;
 }
+
+/* Hide scrollbars */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

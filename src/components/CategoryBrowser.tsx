@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { CategoryScroller } from "./CategoryScroller";
 import { SearchBar } from "./SearchBar";
 import { API_ENDPOINTS } from "@/lib/api-config";
 
@@ -13,7 +12,15 @@ type Category = {
     slug: string;
     icon: string;
     color: string;
-    certifications: Certification[];
+};
+
+type CategoryGroup = {
+    parent: Category;
+    children: Category[];
+};
+
+type CategoriesResponse = {
+    groups: CategoryGroup[];
 };
 
 type Certification = {
@@ -59,7 +66,7 @@ export function CategoryBrowser({
 }: CategoryBrowserProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
-    const [categories, setCategories] = useState<Category[]>([]);
+    const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
     const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
     const [searchLoading, setSearchLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -75,8 +82,8 @@ export function CategoryBrowser({
             if (!response.ok) {
                 throw new Error('Failed to fetch categories');
             }
-            const data = await response.json();
-            setCategories(data);
+            const data: CategoriesResponse = await response.json();
+            setCategoryGroups(data.groups);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
@@ -248,17 +255,40 @@ export function CategoryBrowser({
                 <div>
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <h3 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-4">
+                        <h3 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
                             {title}
                         </h3>
-                        <div className="w-16 h-1 bg-gradient-to-r from-blue-500 to-blue-600 mx-auto mb-4 rounded-full"></div>
-                        <p className="text-lg text-slate-600">
+                        <div className="w-12 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600 mx-auto mb-3 rounded-full"></div>
+                        <p className="text-sm text-slate-600">
                             {subtitle}
                         </p>
                     </div>
 
-                    {/* Category Scroller */}
-                    <CategoryScroller categories={categories} />
+                    {/* Category Groups Display */}
+                    <div className="space-y-8">
+                        {categoryGroups.map((group) => (
+                            <div key={group.parent.id} className="space-y-4">
+                                <div className="flex items-center space-x-2">
+                                    <h2 className="text-xl font-bold text-slate-900">{group.parent.name}</h2>
+                                    <span className="text-sm text-slate-600">({group.children.length} categories)</span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {group.children.map((category) => (
+                                        <div
+                                            key={category.id}
+                                            className="rounded-lg border p-4 bg-white hover:shadow-lg cursor-pointer transition-all hover:scale-105"
+                                            onClick={() => router.push(`/category/${category.slug}`)}
+                                        >
+                                            <h3 className="text-sm font-semibold mb-2">{category.name}</h3>
+                                            <p className="text-xs text-gray-600 mb-3 line-clamp-2">{category.description}</p>
+                                            <div className="text-xs text-blue-600 font-medium">View Certifications →</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
 
                     {/* Error Display */}
                     {error && (
