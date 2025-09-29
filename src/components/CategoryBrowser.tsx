@@ -1,57 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { SearchBar } from "./SearchBar";
 import { API_ENDPOINTS } from "@/lib/api-config";
-
-type Category = {
-    id: number;
-    name: string;
-    description: string;
-    slug: string;
-    icon: string;
-    color: string;
-};
-
-type CategoryGroup = {
-    parent: Category;
-    children: Category[];
-};
-
-type CategoriesResponse = {
-    groups: CategoryGroup[];
-};
-
-type Certification = {
-    id: number;
-    name: string;
-    description: string;
-    slug: string;
-    level: string;
-    duration: number;
-    questions_count: number;
-    is_active: boolean;
-    category_id: number;
-    category_name?: string;
-    category?: {
-        id: number;
-        name: string;
-        description: string;
-        slug: string;
-        icon: string;
-        color: string;
-    };
-};
-
-type SearchResponse = {
-    certifications: Certification[];
-    total: number;
-    page: number;
-    per_page: number;
-    has_next: boolean;
-    has_prev: boolean;
-};
+import { CategoryGroup, CategoriesResponse, SearchResponse, TeacherSearchResponse, SearchTab } from "@/types/category-browser";
+import { LoadingSpinner } from "./category-browser/LoadingSpinner";
+import { ErrorMessage } from "./category-browser/ErrorMessage";
+import { SearchSection } from "./category-browser/SearchSection";
+import { SearchResults } from "./category-browser/SearchResults";
+import { CategoryGrid } from "./category-browser/CategoryGrid";
 
 interface CategoryBrowserProps {
     title?: string;
@@ -60,17 +16,16 @@ interface CategoryBrowserProps {
 }
 
 export function CategoryBrowser({
-    title = "Browse by Category",
-    subtitle = "Explore our comprehensive collection of certification exams",
     showSearch = true
 }: CategoryBrowserProps) {
-    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
     const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+    const [teacherResults, setTeacherResults] = useState<TeacherSearchResponse | null>(null);
     const [searchLoading, setSearchLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [activeSearchTab, setActiveSearchTab] = useState<SearchTab>("certifications");
 
     useEffect(() => {
         fetchCategories();
@@ -91,214 +46,61 @@ export function CategoryBrowser({
         }
     };
 
-    const handleSearch = async (query: string) => {
+    const handleSearchResults = (
+        searchResults: SearchResponse | null,
+        teacherResults: TeacherSearchResponse | null,
+        activeTab: SearchTab,
+        query: string
+    ) => {
+        setSearchResults(searchResults);
+        setTeacherResults(teacherResults);
+        setActiveSearchTab(activeTab);
         setSearchQuery(query);
-        if (!query.trim()) {
-            setSearchResults(null);
-            return;
-        }
-
-        setSearchLoading(true);
-        try {
-            const response = await fetch(`${API_ENDPOINTS.searchCertifications}?q=${encodeURIComponent(query)}`);
-            if (!response.ok) {
-                throw new Error('Search failed');
-            }
-            const data = await response.json();
-
-            // Handle the actual API response structure with 'results' array
-            const validatedData: SearchResponse = {
-                certifications: data.results || [],
-                total: data.results?.length || 0,
-                page: data.page || 1,
-                per_page: data.per_page || 10,
-                has_next: data.has_next || false,
-                has_prev: data.has_prev || false
-            };
-
-            setSearchResults(validatedData);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Search failed');
-        } finally {
-            setSearchLoading(false);
-        }
     };
 
     const handleClearSearch = () => {
         setSearchResults(null);
+        setTeacherResults(null);
         setError(null);
         setSearchQuery("");
     };
 
-    const handleCertificationClick = (slug: string) => {
-        router.push(`/quiz/${slug}`);
-    };
-
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
-                    <p className="mt-2 text-slate-600">Loading certification categories...</p>
-                </div>
-            </div>
-        );
+        return <LoadingSpinner message="Loading certification categories..." />;
     }
 
-    if (error && searchResults === null && !searchLoading && !categories.length) {
-        return (
-            <div className="text-center py-12">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
-                    <p className="text-red-600">Error: {error}</p>
-                    <button
-                        onClick={fetchCategories}
-                        className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                    >
-                        Try Again
-                    </button>
-                </div>
-            </div>
-        );
+    if (error && searchResults === null && teacherResults === null && !searchLoading && categoryGroups.length === 0) {
+        return <ErrorMessage error={error} onRetry={fetchCategories} />;
     }
+
+    const hasSearchResults = searchResults || teacherResults;
 
     return (
-        <div>
-            {/* Search Bar */}
+        <div className="space-y-8">
+            {/* Search Section */}
             {showSearch && (
-                <div className="mb-8">
-                    <SearchBar
-                        onSearch={handleSearch}
-                        onClear={handleClearSearch}
-                        value={searchQuery}
-                    />
-                </div>
+                <SearchSection
+                    onSearchResults={handleSearchResults}
+                    onSearchLoading={setSearchLoading}
+                    onError={setError}
+                />
             )}
 
             {/* Search Results or Category Browser */}
-            {searchResults ? (
-                <div>
-                    {/* Search Results Header */}
-                    <div className="mb-6 flex items-center justify-between">
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-900">Search Results</h3>
-                            <p className="text-slate-600">Found {searchResults.certifications?.length || 0} certifications</p>
-                        </div>
-                        <button
-                            onClick={handleClearSearch}
-                            className="text-blue-600 hover:text-blue-800 font-medium"
-                        >
-                            Clear Search
-                        </button>
-                    </div>
-
-                    {/* Search Results */}
-                    {searchLoading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <div className="text-center">
-                                <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
-                                <p className="mt-2 text-slate-600">Searching...</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            {searchResults.certifications && searchResults.certifications.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {searchResults.certifications.map((cert) => (
-                                        <div
-                                            key={cert.id}
-                                            className="bg-white rounded-xl border p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                                            onClick={() => handleCertificationClick(cert.slug)}
-                                        >
-                                            <div className="flex items-start justify-between mb-4">
-                                                <h3 className="text-lg font-semibold text-slate-900 leading-tight line-clamp-2 flex-1">
-                                                    {cert.name}
-                                                </h3>
-                                                <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full ml-3 flex-shrink-0">
-                                                    {cert.level}
-                                                </span>
-                                            </div>
-
-                                            {cert.description && (
-                                                <p className="text-sm text-slate-600 mb-4 line-clamp-3">
-                                                    {cert.description}
-                                                </p>
-                                            )}
-
-                                            <div className="flex items-center justify-between text-sm text-slate-500">
-                                                <span>{cert.questions_count} Questions</span>
-                                                <span>{cert.duration} Min</span>
-                                            </div>
-
-                                            {cert.category && (
-                                                <div className="mt-3 text-xs text-slate-500">
-                                                    Category: {cert.category.name}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <div className="text-slate-400 mb-4">
-                                        <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-lg font-medium text-slate-900 mb-1">No certifications found</h3>
-                                    <p className="text-slate-500">Try adjusting your search terms.</p>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
+            {hasSearchResults ? (
+                <SearchResults
+                    searchResults={searchResults}
+                    teacherResults={teacherResults}
+                    searchLoading={searchLoading}
+                    activeTab={activeSearchTab}
+                    searchQuery={searchQuery}
+                    onClearSearch={handleClearSearch}
+                />
             ) : (
-                <div>
-                    {/* Header */}
-                    <div className="text-center mb-8">
-                        <h3 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
-                            {title}
-                        </h3>
-                        <div className="w-12 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600 mx-auto mb-3 rounded-full"></div>
-                        <p className="text-sm text-slate-600">
-                            {subtitle}
-                        </p>
-                    </div>
-
-                    {/* Category Groups Display */}
-                    <div className="space-y-8">
-                        {categoryGroups.map((group) => (
-                            <div key={group.parent.id} className="space-y-4">
-                                <div className="flex items-center space-x-2">
-                                    <h2 className="text-xl font-bold text-slate-900">{group.parent.name}</h2>
-                                    <span className="text-sm text-slate-600">({group.children.length} categories)</span>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {group.children.map((category) => (
-                                        <div
-                                            key={category.id}
-                                            className="rounded-lg border p-4 bg-white hover:shadow-lg cursor-pointer transition-all hover:scale-105"
-                                            onClick={() => router.push(`/category/${category.slug}`)}
-                                        >
-                                            <h3 className="text-sm font-semibold mb-2">{category.name}</h3>
-                                            <p className="text-xs text-gray-600 mb-3 line-clamp-2">{category.description}</p>
-                                            <div className="text-xs text-blue-600 font-medium">View Certifications →</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Error Display */}
-                    {error && (
-                        <div className="mt-8 max-w-2xl mx-auto">
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                                <p className="text-red-600 text-center">Error: {error}</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <CategoryGrid
+                    categoryGroups={categoryGroups}
+                    error={error}
+                />
             )}
         </div>
     );

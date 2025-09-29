@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '@/lib/auth';
-import { API_ENDPOINTS } from '@/lib/api-config';
+import { AuthService } from '../services';
 
 function AuthCallbackContent() {
     const router = useRouter();
@@ -33,14 +33,12 @@ function AuthCallbackContent() {
                 localStorage.setItem('auth_token', token);
 
                 // Get user info from backend
-                const userResponse = await fetch(API_ENDPOINTS.auth.me, {
-                    headers: {
+                try {
+                    const userData = await AuthService.getCurrentUser({
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
-                    }
-                });
-                if (userResponse.ok) {
-                    const userData = await userResponse.json();
+                    });
+
                     localStorage.setItem('user_data', JSON.stringify(userData));
 
                     // Notify auth service of successful login
@@ -53,7 +51,8 @@ function AuthCallbackContent() {
                     setTimeout(() => {
                         router.push('/');
                     }, 1500);
-                } else {
+                } catch (error) {
+                    console.error('Failed to get user information:', error);
                     setStatus('error');
                     setMessage('Failed to get user information');
                 }

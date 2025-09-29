@@ -5,19 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ExamQuiz } from "@/components/ExamQuiz";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Award, Clock, Target, BookOpen } from "lucide-react";
-import { API_ENDPOINTS } from "@/lib/api-config";
-import { Question } from "@/types/quiz";
-
-type Certification = {
-    id: number;
-    name: string;
-    description: string;
-    slug: string;
-    level: string;
-    duration: number;
-    questions_count: number;
-    questions: Question[];
-};
+import { QuizService, Certification } from "./services";
 
 function QuizPageContent() {
     const params = useParams();
@@ -49,11 +37,7 @@ function QuizPageContent() {
             setError(null);
 
             try {
-                const response = await fetch(API_ENDPOINTS.certifications(certificationSlug));
-                if (!response.ok) {
-                    throw new Error('Failed to fetch certification data');
-                }
-                const data = await response.json();
+                const data = await QuizService.getCertificationData(certificationSlug);
                 setCertificationData(data);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An error occurred');

@@ -16,9 +16,12 @@ import {
     User,
     GraduationCap,
     Menu,
-    X
+    X,
+    Bell,
+    Settings
 } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface SidebarItem {
     title: string;
@@ -27,12 +30,23 @@ interface SidebarItem {
     badge?: string;
 }
 
-interface SidebarProps {
+interface DashboardLayoutProps {
+    children: React.ReactNode;
     userRole?: "student" | "teacher" | "admin";
-    className?: string;
+    userName?: string;
+    userEmail?: string;
+    pageTitle?: string;
+    pageDescription?: string;
 }
 
-export function Sidebar({ userRole = "student", className }: SidebarProps) {
+export function DashboardLayout({
+    children,
+    userRole = "student",
+    userName,
+    userEmail,
+    pageTitle = "Dashboard",
+    pageDescription
+}: DashboardLayoutProps) {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const pathname = usePathname();
@@ -60,7 +74,7 @@ export function Sidebar({ userRole = "student", className }: SidebarProps) {
 
     const SidebarContent = () => (
         <div className="flex h-full flex-col">
-            {/* Header */}
+            {/* Sidebar Header */}
             <div className={cn(
                 "flex items-center justify-between border-b px-3 py-4",
                 collapsed ? "px-2" : "px-6"
@@ -124,7 +138,7 @@ export function Sidebar({ userRole = "student", className }: SidebarProps) {
                 })}
             </nav>
 
-            {/* Footer */}
+            {/* Sidebar Footer */}
             <div className="border-t p-4">
                 <div className={cn(
                     "flex items-center gap-3 text-sm text-gray-600",
@@ -156,8 +170,44 @@ export function Sidebar({ userRole = "student", className }: SidebarProps) {
         </div>
     );
 
+    const DashboardHeader = () => (
+        <header className="bg-white border-b border-gray-200 px-4 py-3 lg:px-6">
+            <div className="flex items-center justify-between">
+                <div className="lg:ml-0 ml-12">
+                    <h1 className="text-xl font-semibold text-gray-900">
+                        {pageTitle}
+                    </h1>
+                    {pageDescription && (
+                        <p className="text-sm text-gray-600">
+                            {pageDescription}
+                        </p>
+                    )}
+                    {!pageDescription && (userName || userEmail) && (
+                        <p className="text-sm text-gray-600">
+                            Welcome back, {userName || userEmail}!
+                        </p>
+                    )}
+                </div>
+                <div className="flex items-center gap-3">
+                    <Badge
+                        variant={userRole === "teacher" ? "default" : "secondary"}
+                        className="px-3 py-1 hidden sm:flex"
+                    >
+                        {userRole === "teacher" ? "Teacher + Student" : "Student"}
+                    </Badge>
+                    <Button variant="ghost" size="sm" className="relative">
+                        <Bell className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+        </header>
+    );
+
     return (
-        <>
+        <div className="flex h-screen bg-gray-50">
             {/* Mobile overlay */}
             {mobileOpen && (
                 <div
@@ -179,8 +229,7 @@ export function Sidebar({ userRole = "student", className }: SidebarProps) {
             {/* Desktop sidebar */}
             <div className={cn(
                 "hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:bg-white lg:border-r lg:border-gray-200 lg:transition-all lg:duration-300",
-                collapsed ? "lg:w-16" : "lg:w-64",
-                className
+                collapsed ? "lg:w-16" : "lg:w-64"
             )}>
                 <SidebarContent />
             </div>
@@ -192,6 +241,19 @@ export function Sidebar({ userRole = "student", className }: SidebarProps) {
             )}>
                 <SidebarContent />
             </div>
-        </>
+
+            {/* Main Content */}
+            <div className={cn(
+                "flex-1 flex flex-col transition-all duration-300",
+                collapsed ? "lg:ml-16" : "lg:ml-64"
+            )}>
+                <DashboardHeader />
+
+                {/* Page Content */}
+                <main className="flex-1 overflow-auto">
+                    {children}
+                </main>
+            </div>
+        </div>
     );
 }

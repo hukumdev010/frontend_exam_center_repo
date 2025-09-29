@@ -15,6 +15,8 @@ type Category = {
     certifications: Certification[];
 };
 
+
+
 type Certification = {
     id: number;
     name: string;
@@ -40,11 +42,11 @@ export function CategorySelector({ onCertificationSelect }: CategorySelectorProp
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch(API_ENDPOINTS.categories);
+            const response = await fetch(API_ENDPOINTS.categoriesWithCertifications);
             if (!response.ok) {
                 throw new Error('Failed to fetch categories');
             }
-            const data = await response.json();
+            const data: Category[] = await response.json();
             setCategories(data);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
