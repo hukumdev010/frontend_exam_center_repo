@@ -48,6 +48,12 @@ export class TeacherService {
         });
     }
 
+    static async checkEligibility(authHeaders: HeadersInit) {
+        return this.makeRequest(`${API_ENDPOINTS.base}/api/teachers/me/eligibility`, {
+            headers: authHeaders,
+        });
+    }
+
     static async getMyTeachingSessions(authHeaders: HeadersInit): Promise<TeachingSession[]> {
         return this.makeRequest(`${API_ENDPOINTS.base}/api/sessions/my/teaching`, {
             headers: authHeaders,

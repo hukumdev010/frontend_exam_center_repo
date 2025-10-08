@@ -12,13 +12,15 @@ import {
     Award,
     Users,
     Calendar,
-    BarChart3,
     User,
     GraduationCap,
     Menu,
     X,
     Bell,
-    Settings
+    Settings,
+    Target,
+    TrendingUp,
+    CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,11 +30,28 @@ interface SidebarItem {
     href: string;
     icon: React.ComponentType<{ className?: string }>;
     badge?: string;
+    requiresQualification?: boolean;
+}
+
+interface UserQualifications {
+    is_eligible: boolean;
+    qualifications_count: number;
+    has_teacher_profile: boolean;
+    teacher_status?: string;
+    qualifications: TeacherQualification[];
+}
+
+interface TeacherQualification {
+    id: number;
+    certification_name: string;
+    category_name: string;
+    score: number;
+    qualified_at: string;
 }
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
-    userRole?: "student" | "teacher" | "admin";
+    qualifications?: UserQualifications | null;
     userName?: string;
     userEmail?: string;
     pageTitle?: string;
@@ -41,7 +60,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({
     children,
-    userRole = "student",
+    qualifications,
     userName,
     userEmail,
     pageTitle = "Dashboard",
@@ -51,26 +70,46 @@ export function DashboardLayout({
     const [mobileOpen, setMobileOpen] = useState(false);
     const pathname = usePathname();
 
-    const studentItems: SidebarItem[] = [
+    const hasTeachingQualifications = qualifications?.is_eligible || false;
+    const qualificationCount = qualifications?.qualifications_count || 0;
+
+    // Simple navigation - only show what's relevant
+    const learningItems: SidebarItem[] = [
         { title: "Dashboard", href: "/dashboard", icon: Home },
-        { title: "Student Portal", href: "/dashboard/student", icon: BookOpen },
-        { title: "Categories", href: "/dashboard/categories", icon: BookOpen },
+        { title: "Browse Subjects", href: "/dashboard/categories", icon: BookOpen },
+        { title: "Find Teachers", href: "/dashboard/teachers", icon: Users },
+        { title: "My Progress", href: "/dashboard/learning", icon: TrendingUp },
         { title: "Quizzes", href: "/quiz", icon: Award },
-        { title: "Sessions", href: "/sessions", icon: Calendar },
-        { title: "Profile", href: "/dashboard/profile", icon: User },
+        { title: "Certificates", href: "/dashboard/certificates", icon: CheckCircle },
     ];
 
-    const teacherAdditionalItems: SidebarItem[] = [
-        { title: "Teaching Dashboard", href: "/dashboard/teacher", icon: GraduationCap },
-        { title: "My Teaching Sessions", href: "/dashboard/teacher/sessions", icon: Calendar },
-        { title: "My Students", href: "/dashboard/teacher/students", icon: Users },
-        { title: "Teaching Analytics", href: "/dashboard/teacher/analytics", icon: BarChart3 },
+    // Only show teaching items if user actually has qualifications
+    const teachingItems: SidebarItem[] = hasTeachingQualifications ? [
+        {
+            title: "My Teaching",
+            href: "/dashboard/teaching",
+            icon: Users,
+            badge: qualificationCount > 0 ? qualificationCount.toString() : undefined
+        },
+        {
+            title: "Availability",
+            href: "/dashboard/teaching/availability",
+            icon: Calendar
+        },
+    ] : [];
+
+    // Account items - always visible
+    const accountItems: SidebarItem[] = [
+        {
+            title: hasTeachingQualifications ? "My Qualifications" : "Become a Teacher",
+            href: "/dashboard/qualifications",
+            icon: hasTeachingQualifications ? GraduationCap : Target,
+            badge: hasTeachingQualifications ? undefined : "Start here!"
+        },
+        { title: "Settings", href: "/dashboard/settings", icon: Settings },
     ];
 
-    // Always include student items; add teacher items if user is a teacher
-    const items = userRole === "teacher"
-        ? [...studentItems, ...teacherAdditionalItems]
-        : studentItems;
+    const items = [...learningItems, ...teachingItems, ...accountItems];
 
     const SidebarContent = () => (
         <div className="flex h-full flex-col">
@@ -145,11 +184,14 @@ export function DashboardLayout({
                     collapsed && "justify-center"
                 )}>
                     <div className={cn(
-                        "h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center relative",
-                        userRole === "teacher" ? "bg-green-100" : "bg-blue-100"
+                        "h-8 w-8 rounded-full flex items-center justify-center relative",
+                        hasTeachingQualifications ? "bg-green-100" : "bg-blue-100"
                     )}>
-                        <User className="h-4 w-4 text-blue-600" />
-                        {userRole === "teacher" && (
+                        <User className={cn(
+                            "h-4 w-4",
+                            hasTeachingQualifications ? "text-green-600" : "text-blue-600"
+                        )} />
+                        {hasTeachingQualifications && (
                             <div className="absolute -top-1 -right-1 h-4 w-4 bg-green-600 rounded-full flex items-center justify-center">
                                 <GraduationCap className="h-2 w-2 text-white" />
                             </div>
@@ -158,10 +200,13 @@ export function DashboardLayout({
                     {!collapsed && (
                         <div>
                             <div className="font-medium">
-                                {userRole === "teacher" ? "Student + Teacher" : "Student"}
+                                {hasTeachingQualifications ? "Learner + Teacher" : "Learner"}
                             </div>
                             <div className="text-xs text-gray-500">
-                                {userRole === "teacher" ? "Learning & Teaching" : "Learning Mode"}
+                                {hasTeachingQualifications
+                                    ? `${qualificationCount} Teaching ${qualificationCount === 1 ? 'Subject' : 'Subjects'}`
+                                    : "Learning Mode"
+                                }
                             </div>
                         </div>
                     )}
@@ -171,7 +216,7 @@ export function DashboardLayout({
     );
 
     const DashboardHeader = () => (
-        <header className="bg-white border-b border-gray-200 px-4 py-3 lg:px-6">
+        <header className="bg-white border-b border-gray-200 px-6 py-3">
             <div className="flex items-center justify-between">
                 <div className="lg:ml-0 ml-12">
                     <h1 className="text-xl font-semibold text-gray-900">
@@ -189,11 +234,19 @@ export function DashboardLayout({
                     )}
                 </div>
                 <div className="flex items-center gap-3">
+                    {hasTeachingQualifications && (
+                        <Badge
+                            variant="default"
+                            className="px-3 py-1 hidden sm:flex bg-green-100 text-green-800"
+                        >
+                            Teaching {qualificationCount} {qualificationCount === 1 ? 'Subject' : 'Subjects'}
+                        </Badge>
+                    )}
                     <Badge
-                        variant={userRole === "teacher" ? "default" : "secondary"}
+                        variant="secondary"
                         className="px-3 py-1 hidden sm:flex"
                     >
-                        {userRole === "teacher" ? "Teacher + Student" : "Student"}
+                        {hasTeachingQualifications ? "Learner + Teacher" : "Learner"}
                     </Badge>
                     <Button variant="ghost" size="sm" className="relative">
                         <Bell className="h-4 w-4" />
@@ -250,7 +303,7 @@ export function DashboardLayout({
                 <DashboardHeader />
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-auto">
+                <main className="flex-1 overflow-auto px-6 py-4">
                     {children}
                 </main>
             </div>

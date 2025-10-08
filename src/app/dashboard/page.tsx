@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
     User,
@@ -18,19 +18,24 @@ import {
     Clock,
     ChevronRight,
     Trophy,
-
-    TrendingUp
+    Target,
+    TrendingUp,
+    CheckCircle,
+    Star
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardService } from "./services";
 import { StudentService, UserProgress as StudentProgress } from "./student/services";
 import { TeacherService } from "./teacher/services";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchTeacherEligibility, fetchTeacherProfile } from "@/store/slices/teacherSlice";
 
 interface DashboardStats {
     totalQuizzes: number;
     completedQuizzes: number;
     avgScore: number;
     totalCertifications: number;
+    teachingQualifications?: number;
     teachingSessions?: number;
     studentsHelped?: number;
 }
@@ -46,12 +51,24 @@ interface ActivityItem {
     created_at: string;
 }
 
+interface TeachingEligibility {
+    is_eligible: boolean;
+    qualifications_count: number;
+    has_teacher_profile: boolean;
+    teacher_status?: string;
+    qualifications: any[];
+}
+
 
 
 export default function DashboardPage() {
     const { data: session, status, getAuthHeaders } = useSession();
     const router = useRouter();
-    const [isTeacher, setIsTeacher] = useState(false);
+    const dispatch = useAppDispatch();
+
+    // Redux state
+    const { eligibility, profile, isTeacher, loading } = useAppSelector((state) => state.teacher);
+
     const [stats, setStats] = useState<DashboardStats>({
         totalQuizzes: 0,
         completedQuizzes: 0,
@@ -72,17 +89,29 @@ export default function DashboardPage() {
     useEffect(() => {
         if (session?.user?.id) {
             checkTeacherRole();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [session?.user?.id, dispatch]);
+
+    // Load dashboard stats when teacher status changes
+    useEffect(() => {
+        if (session?.user?.id && eligibility !== null) {
             loadDashboardStats();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session?.user?.id]);
+    }, [session?.user?.id, isTeacher, eligibility]);
+
+    // Fetch teacher profile if user is a teacher but profile not loaded
+    useEffect(() => {
+        if (isTeacher && !profile && !loading.profile && eligibility?.has_teacher_profile) {
+            dispatch(fetchTeacherProfile(getAuthHeaders()));
+        }
+    }, [isTeacher, profile, loading.profile, eligibility, dispatch, getAuthHeaders]);
 
     const checkTeacherRole = async () => {
-        try {
-            await TeacherService.getMyProfile(getAuthHeaders());
-            setIsTeacher(true);
-        } catch {
-            setIsTeacher(false);
+        if (session?.user?.id) {
+            // Fetch eligibility data using Redux
+            dispatch(fetchTeacherEligibility(getAuthHeaders()));
         }
     };
 
@@ -113,7 +142,7 @@ export default function DashboardPage() {
                 console.error("Error loading progress:", error);
             }
 
-            // If teacher, load teaching sessions
+            // If teacher, load teaching sessions and profile
             if (isTeacher) {
                 try {
                     const sessionsData = await TeacherService.getMyTeachingSessions(getAuthHeaders());
@@ -121,6 +150,9 @@ export default function DashboardPage() {
                         ...prev,
                         teachingSessions: sessionsData.length,
                     }));
+
+                    // Also fetch the teacher profile if needed (moved to separate useEffect)
+                    // dispatch(fetchTeacherProfile(getAuthHeaders()));
                 } catch (error) {
                     console.error("Error loading teaching sessions:", error);
                 }
