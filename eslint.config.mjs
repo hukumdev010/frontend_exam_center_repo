@@ -20,6 +20,11 @@ const eslintConfig = [
       "next-env.d.ts",
       "src/generated/**",
       "transform-javascript-seed.js",
+      ".yarn/**",
+      ".pnp.cjs",
+      ".pnp.js",
+      ".yarnrc.yml",
+      "yarn.lock",
     ],
   },
 ];

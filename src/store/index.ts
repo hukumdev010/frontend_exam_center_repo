@@ -1,9 +1,18 @@
-import { configureStore } from '@reduxjs/toolkit';
-import teacherReducer from './slices/teacherSlice';
+import { configureStore, createSlice } from '@reduxjs/toolkit';
+
+// Temporary placeholder slice - replace with actual slices as needed
+const appSlice = createSlice({
+  name: 'app',
+  initialState: {
+    initialized: true,
+  },
+  reducers: {},
+});
 
 export const store = configureStore({
   reducer: {
-    teacher: teacherReducer,
+    app: appSlice.reducer,
+    // Add other reducers here as needed
   },
 });
 

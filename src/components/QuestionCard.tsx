@@ -2,24 +2,41 @@
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, XCircle, Info, ExternalLink, MessageSquare } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import { API_ENDPOINTS } from "@/lib/api-config";
-import { useAIAssistant } from "./AIAssistantContext";
 import { Question, Answer } from "../types/quiz";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
+import { deterministicShuffle } from "@/lib/shuffle-utils";
+import { safeLocalStorage } from "@/lib/safe-storage";
+
+// Import highlight.js styles
+import 'highlight.js/styles/github.css';
 
 interface QuestionCardProps {
     question?: Question;
-    onAnswer: (isCorrect: boolean) => void;
+    onAnswer: (isCorrect: boolean, totalPoints?: number) => void;
     onSubmit: (isCorrect: boolean, canProceed: boolean) => void;
     // Navigation props
     onNext?: () => void;
     onPrevious?: () => void;
+    onReset?: () => void;
     canProceed?: boolean;
     isFirstQuestion?: boolean;
     isLastQuestion?: boolean;
-    currentQuestion?: number;
-    totalQuestions?: number;
+    // Explanation props
+    onExplanationChange?: (explanationData: {
+        showExplanation: boolean;
+        hasSubmitted: boolean;
+        isAnswerCorrect: boolean;
+        attempts: number;
+        maxAttempts: number;
+        earnedPoints: number;
+        explanation?: string;
+    }) => void;
 }
 
 export function QuestionCard({
@@ -28,11 +45,11 @@ export function QuestionCard({
     onSubmit,
     onNext,
     onPrevious,
+    onReset,
     canProceed = false,
     isFirstQuestion = false,
     isLastQuestion = false,
-    currentQuestion,
-    totalQuestions
+    onExplanationChange
 }: QuestionCardProps) {
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
     const [showExplanation, setShowExplanation] = useState(false);
@@ -45,30 +62,14 @@ export function QuestionCard({
     const [randomizedAnswers, setRandomizedAnswers] = useState<Answer[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // AI Assistant context
-    const { showLoading, showResponse } = useAIAssistant();
-
-    // Shuffle array function - Fisher-Yates shuffle algorithm
-    const shuffleArray = <T,>(array: T[]): T[] => {
-        const shuffled = [...array];
-
-        // Fisher-Yates shuffle algorithm for better randomization
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-
-        // Ensure the order actually changed for debugging
-
-        return shuffled;
-    };
-
     // Reset component state when question changes
     useEffect(() => {
         if (!question) return;
 
-        // Randomize answers order
-        setRandomizedAnswers(shuffleArray(question.answers));
+        // Use deterministic shuffle based on question ID to avoid hydration mismatch
+        // This ensures the same order on both server and client
+        const seedString = `question-${question.id}-${question.text.substring(0, 20)}`;
+        setRandomizedAnswers(deterministicShuffle(question.answers, seedString));
 
         setSelectedAnswer(null);
         setShowExplanation(false);
@@ -80,6 +81,21 @@ export function QuestionCard({
         setIsSubmitting(false);
     }, [question]);
 
+    // Call onExplanationChange whenever explanation state changes
+    useEffect(() => {
+        if (onExplanationChange) {
+            onExplanationChange({
+                showExplanation,
+                hasSubmitted,
+                isAnswerCorrect,
+                attempts,
+                maxAttempts,
+                earnedPoints,
+                explanation: question?.explanation
+            });
+        }
+    }, [onExplanationChange, showExplanation, hasSubmitted, isAnswerCorrect, attempts, maxAttempts, earnedPoints, question?.explanation]);
+
     // Return loading state if question is not available
     if (!question) {
         return (
@@ -90,7 +106,7 @@ export function QuestionCard({
                     <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-3xl animate-pulse"></div>
                     <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-transparent rounded-full blur-2xl animate-pulse delay-1000"></div>
                 </div>
-                <div className="relative p-6 md:p-8">
+                <div className="relative p-4 md:p-6">
                     <div className="animate-pulse space-y-4">
                         {/* Question header skeleton */}
                         <div className="flex items-center gap-3 mb-4">
@@ -139,11 +155,11 @@ export function QuestionCard({
 
         try {
             // Get the certification slug from the URL or pass it as a prop
-            const urlPath = window.location.pathname;
+            const urlPath = typeof window !== 'undefined' ? window.location.pathname : '';
             const certificationSlug = urlPath.split('/').pop() || 'aws-cloud-practitioner';
 
             // Call the verification API
-            const token = localStorage.getItem('auth_token');
+            const token = safeLocalStorage.getItem('auth_token');
             const headers: HeadersInit = {
                 'Content-Type': 'application/json',
             };
@@ -183,7 +199,7 @@ export function QuestionCard({
                 setShowExplanation(true);
             }
 
-            onAnswer(result.is_correct);
+            onAnswer(result.is_correct, result.total_points);
             onSubmit(result.is_correct, result.is_correct || attempts >= maxAttempts);
 
         } catch (error) {
@@ -214,42 +230,7 @@ export function QuestionCard({
         setCorrectAnswerId(null);
     };
 
-    const handleAskChatGPT = async () => {
-        if (!question) return;
 
-        showLoading(question.text);
-
-        try {
-            const token = localStorage.getItem('auth_token') || 'mock_token';
-
-            const requestBody = {
-                message: `Help me understand this question without giving the direct answer: ${question.text}`,
-                context: `Question about certification exam`,
-                current_question: question.text,
-                conversation_history: []
-            };
-
-            const response = await fetch(API_ENDPOINTS.ai.chat, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            showResponse(question.text, data.response || "I'm sorry, I couldn't generate a response.");
-
-        } catch (error) {
-            console.error('Error calling AI API:', error);
-            showResponse(question.text, "I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later.");
-        }
-    };
 
     const getAnswerStyle = (answer: Answer) => {
         if (!hasSubmitted) {
@@ -306,17 +287,90 @@ export function QuestionCard({
             <div className="relative p-6 md:p-8">
                 {/* Question Header */}
                 <div className="mb-6">
-                    <div className="inline-flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 text-sm font-semibold rounded-2xl mb-4 border border-blue-200/50 shadow-sm">
-                        <div className="w-2.5 h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse"></div>
-                        <span>Question</span>
-                        <div className="h-4 w-px bg-blue-300/50"></div>
-                        <span className="text-blue-700">
-                            {question.points > 1 ? `${question.points} points` : `${question.points} point`}
-                        </span>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="inline-flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 text-sm font-semibold rounded-2xl border border-blue-200/50 shadow-sm">
+                            <div className="w-2.5 h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse"></div>
+                            <span>Question</span>
+                            <div className="h-4 w-px bg-blue-300/50"></div>
+                            <span className="text-blue-700">
+                                {question.points > 1 ? `${question.points} points` : `${question.points} point`}
+                            </span>
+                        </div>
+
+                        {/* Reset Button */}
+                        {onReset && (
+                            <Button
+                                onClick={onReset}
+                                variant="outline"
+                                size="sm"
+                                className="inline-flex items-center gap-2 bg-white hover:bg-red-50 border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 transition-all duration-200"
+                                title="Reset Quiz - Start over from question 1"
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                                Reset Quiz
+                            </Button>
+                        )}
                     </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-slate-900 leading-relaxed tracking-tight">
-                        {question.text}
-                    </h3>
+                    <div className="prose prose-slate max-w-none">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeHighlight, rehypeRaw]}
+                            components={{
+                                // Headers
+                                h1: ({ ...props }) => <h1 className="text-2xl font-bold text-slate-900 mb-4" {...props} />,
+                                h2: ({ ...props }) => <h2 className="text-xl font-bold text-slate-900 mb-3" {...props} />,
+                                h3: ({ ...props }) => <h3 className="text-lg font-semibold text-slate-800 mb-2" {...props} />,
+                                h4: ({ ...props }) => <h4 className="text-base font-semibold text-slate-800 mb-2" {...props} />,
+
+                                // Paragraphs and text
+                                p: ({ ...props }) => <p className="text-slate-700 mb-3 leading-relaxed" {...props} />,
+                                strong: ({ ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
+                                em: ({ ...props }) => <em className="italic text-slate-700" {...props} />,
+
+                                // Code blocks
+                                pre: ({ ...props }) => (
+                                    <div className="relative">
+                                        <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-sm overflow-x-auto border shadow-lg" {...props} />
+                                    </div>
+                                ),
+                                code: ({ className, children, ...props }) => {
+                                    const isInline = !className;
+                                    if (isInline) {
+                                        return <code className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-sm font-mono" {...props}>{children}</code>;
+                                    }
+                                    return <code className={className} {...props}>{children}</code>;
+                                },
+
+                                // Lists
+                                ul: ({ ...props }) => <ul className="list-disc list-inside text-slate-700 mb-3 space-y-1" {...props} />,
+                                ol: ({ ...props }) => <ol className="list-decimal list-inside text-slate-700 mb-3 space-y-1" {...props} />,
+                                li: ({ ...props }) => <li className="text-slate-700" {...props} />,
+
+                                // Tables
+                                table: ({ ...props }) => (
+                                    <div className="overflow-x-auto mb-4">
+                                        <table className="min-w-full border border-slate-200 rounded-lg" {...props} />
+                                    </div>
+                                ),
+                                thead: ({ ...props }) => <thead className="bg-slate-50" {...props} />,
+                                th: ({ ...props }) => <th className="border border-slate-200 px-3 py-2 text-left font-semibold text-slate-900" {...props} />,
+                                td: ({ ...props }) => <td className="border border-slate-200 px-3 py-2 text-slate-700" {...props} />,
+
+                                // Blockquotes
+                                blockquote: ({ ...props }) => (
+                                    <blockquote className="border-l-4 border-blue-400 pl-4 py-2 bg-blue-50 text-blue-900 rounded-r-lg mb-3" {...props} />
+                                ),
+
+                                // Links
+                                a: ({ ...props }) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />,
+
+                                // Horizontal rule
+                                hr: ({ ...props }) => <hr className="border-slate-300 my-6" {...props} />,
+                            }}
+                        >
+                            {question.text}
+                        </ReactMarkdown>
+                    </div>
                 </div>
 
                 {/* Answer Options */}
@@ -342,7 +396,28 @@ export function QuestionCard({
                                 )}>
                                     {String.fromCharCode(65 + index)}
                                 </div>
-                                <span className="text-sm font-medium leading-relaxed flex-1">{answer.text}</span>
+                                <div className="prose prose-sm max-w-none">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeHighlight, rehypeRaw]}
+                                        components={{
+                                            // Keep it simple for answer options
+                                            p: ({ ...props }) => <span className="text-sm font-medium leading-relaxed" {...props} />,
+                                            strong: ({ ...props }) => <strong className="font-bold text-slate-900" {...props} />,
+                                            em: ({ ...props }) => <em className="italic" {...props} />,
+                                            code: ({ ...props }) => <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-xs font-mono" {...props} />,
+                                            // Remove margins for inline elements in answers
+                                            h1: ({ ...props }) => <span className="font-bold text-lg" {...props} />,
+                                            h2: ({ ...props }) => <span className="font-bold text-base" {...props} />,
+                                            h3: ({ ...props }) => <span className="font-bold text-sm" {...props} />,
+                                            ul: ({ ...props }) => <span {...props} />,
+                                            ol: ({ ...props }) => <span {...props} />,
+                                            li: ({ ...props }) => <span {...props} />,
+                                        }}
+                                    >
+                                        {answer.text}
+                                    </ReactMarkdown>
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -354,25 +429,6 @@ export function QuestionCard({
                         </button>
                     ))}
                 </div>
-
-                {/* Submit button or Try Again button */}
-                {!hasSubmitted && (
-                    <div className="mb-6">
-                        <Button
-                            onClick={handleSubmit}
-                            disabled={selectedAnswer === null || isSubmitting}
-                            className={cn(
-                                "w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 text-white font-bold py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-base",
-                                selectedAnswer !== null && !isSubmitting && "ring-2 ring-blue-200 ring-offset-2"
-                            )}
-                        >
-                            <span className="flex items-center justify-center gap-2">
-                                {isSubmitting ? 'Verifying...' : 'Submit Answer'}
-                                <CheckCircle2 className="w-4 h-4" />
-                            </span>
-                        </Button>
-                    </div>
-                )}
 
                 {hasSubmitted && !isAnswerCorrect && attempts < maxAttempts && (
                     <div className="mb-6">
@@ -404,43 +460,9 @@ export function QuestionCard({
                     </div>
                 )}
 
-                {/* Footer with controls and scoring */}
-                <div className="flex items-center justify-between pt-6 border-t border-slate-200/60">
-                    <button
-                        className={cn(
-                            "inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-xl transition-all duration-300",
-                            (!hasSubmitted || (!isAnswerCorrect && attempts < maxAttempts))
-                                ? "text-slate-400 cursor-not-allowed bg-slate-100"
-                                : "text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50"
-                        )}
-                        onClick={() => setShowExplanation(!showExplanation)}
-                        disabled={!hasSubmitted || (!isAnswerCorrect && attempts < maxAttempts)}
-                    >
-                        <Info className="w-3 h-3" />
-                        {showExplanation ? "Hide" : "Show"} Explanation
-                    </button>
-
-                    {hasSubmitted && (
-                        <div className="text-xs font-bold">
-                            {earnedPoints > 0 ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 rounded-xl shadow-sm border border-emerald-200">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    <span>+{earnedPoints} point{earnedPoints > 1 ? 's' : ''}</span>
-                                    <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
-                                </div>
-                            ) : (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-100 to-rose-100 text-red-800 rounded-xl shadow-sm border border-red-200">
-                                    <XCircle className="w-3 h-3" />
-                                    <span>0 points</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
                 {/* Navigation Section */}
                 {(onNext || onPrevious) && (
-                    <div className="mt-6 flex items-center justify-between">
+                    <div className="mt-6 flex items-center justify-center gap-4">
                         <Button
                             variant="outline"
                             onClick={onPrevious}
@@ -450,17 +472,32 @@ export function QuestionCard({
                             Previous
                         </Button>
 
-                        <div className="text-sm text-slate-600 text-center flex-1 mx-4">
-                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${canProceed
-                                ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                }`}>
-                                <div className={`w-2 h-2 rounded-full ${canProceed ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                                <span className="font-medium">
-                                    {canProceed ? "Ready to proceed!" : "Submit your answer to continue"}
+                        {/* Submit Answer Button */}
+                        {!hasSubmitted ? (
+                            <Button
+                                onClick={handleSubmit}
+                                disabled={selectedAnswer === null || isSubmitting || (hasSubmitted && isAnswerCorrect)}
+                                className={cn(
+                                    "bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 text-white font-bold px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed",
+                                    selectedAnswer !== null && !isSubmitting && "ring-2 ring-blue-200 ring-offset-1"
+                                )}
+                            >
+                                <span className="flex items-center justify-center gap-2">
+                                    {isSubmitting ? 'Verifying...' : 'Submit Answer'}
+                                    <CheckCircle2 className="w-4 h-4" />
                                 </span>
-                            </div>
-                        </div>
+                            </Button>
+                        ) : (
+                            <Button
+                                disabled
+                                className="bg-slate-200 text-slate-400 cursor-not-allowed px-6 py-2 rounded-xl"
+                            >
+                                <span className="flex items-center justify-center gap-2">
+                                    Submitted
+                                    <CheckCircle2 className="w-4 h-4" />
+                                </span>
+                            </Button>
+                        )}
 
                         {canProceed && onNext ? (
                             <Button
@@ -480,49 +517,7 @@ export function QuestionCard({
                     </div>
                 )}
 
-                {/* Enhanced Explanation Section */}
-                {showExplanation && question.explanation && hasSubmitted && (isAnswerCorrect || attempts >= maxAttempts) && (
-                    <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200/50 rounded-2xl shadow-lg relative overflow-hidden">
-                        {/* Background decoration */}
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-200/30 to-transparent rounded-full blur-2xl"></div>
 
-                        <div className="relative">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center">
-                                    <Info className="w-3 h-3 text-white" />
-                                </div>
-                                <h4 className="text-base font-bold text-blue-900">Explanation</h4>
-                            </div>
-
-                            <p className="text-blue-900 leading-relaxed mb-4 text-sm">
-                                {question.explanation}
-                            </p>
-
-                            <div className="pt-4 border-t border-blue-200/50">
-                                <div className="flex flex-wrap items-center gap-3">
-                                    {question.reference && (
-                                        <a
-                                            href={question.reference}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/70 hover:bg-white text-blue-600 hover:text-blue-800 rounded-xl border border-blue-200 transition-all duration-300 hover:shadow-md font-medium text-xs"
-                                        >
-                                            <ExternalLink className="w-3 h-3" />
-                                            Learn more
-                                        </a>
-                                    )}
-                                    <button
-                                        onClick={handleAskChatGPT}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl transition-all duration-300 hover:shadow-md font-medium text-xs transform hover:-translate-y-0.5"
-                                    >
-                                        <MessageSquare className="w-3 h-3" />
-                                        Ask AI Assistant
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

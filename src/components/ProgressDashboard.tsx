@@ -1,27 +1,31 @@
 "use client"
 
 import { useSession } from "@/lib/useAuth"
-import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Trophy, Clock, Target } from "lucide-react"
-import { API_ENDPOINTS } from "@/lib/api-config"
+import { useUserProgress } from "@/hooks/useApi"
 
 interface UserProgress {
-    id: string
-    currentQuestion: number
+    id: number
+    userId: number
+    certificationId: number
+    certificationSlug: string
+    certificationTitle: string
     totalQuestions: number
+    currentQuestion: number
+    score: number
+    isCompleted: boolean
+    timeSpent: number
+    lastAccessedAt: string
+    createdAt: string
     correctAnswers: number
     points: number
-    isCompleted: boolean
-    lastActiveAt: string
     certification: {
-        id: number
         name: string
         slug: string
         category: {
             name: string
-            color?: string
         }
     }
 }
@@ -31,36 +35,12 @@ interface ProgressDashboardProps {
 }
 
 export default function ProgressDashboard({ onContinueQuiz }: ProgressDashboardProps) {
-    const { data: session, getAuthHeaders } = useSession()
-    const [progress, setProgress] = useState<UserProgress[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    const { data: session } = useSession()
+    const { data: progressData, isLoading } = useUserProgress()
 
-    const fetchProgress = useCallback(async () => {
-        console.log('ProgressDashboard: fetchProgress called');
-        try {
-            const response = await fetch(API_ENDPOINTS.progress, {
-                headers: getAuthHeaders()
-            })
-            console.log('ProgressDashboard: API response status:', response.status);
-            if (response.ok) {
-                const data = await response.json()
-                console.log('ProgressDashboard: API response data:', data);
-                setProgress(data)
-            } else {
-                console.error('Failed to fetch progress:', response.status, response.statusText)
-            }
-        } catch (error) {
-            console.error('Failed to fetch progress:', error)
-        } finally {
-            setIsLoading(false)
-        }
-    }, [getAuthHeaders])
+    const progress = (progressData as UserProgress[]) || []
 
-    useEffect(() => {
-        if (session?.user?.id) {
-            fetchProgress()
-        }
-    }, [session?.user?.id]) //disable-next-line react-hooks/exhaustive-deps
+    console.log('ProgressDashboard: SWR data:', progress)
 
     if (!session) {
         return null

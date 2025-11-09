@@ -74,8 +74,8 @@ export function CategoryScroller({ categories }: CategoryScrollerProps) {
         }
     };
 
-    const handleCertificationClick = (slug: string) => {
-        router.push(`/quiz/${slug}`);
+    const handleStartQuiz = (slug: string) => {
+        router.push(`/quiz/${slug}/info`);
     };
 
     const handleMoreCertificationsClick = (categorySlug: string) => {
@@ -146,7 +146,7 @@ export function CategoryScroller({ categories }: CategoryScrollerProps) {
                                     className="bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 p-4 
                                              shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer 
                                              hover:bg-white/90 hover-scale"
-                                    onClick={() => handleCertificationClick(cert.slug)}
+                                    onClick={() => handleStartQuiz(cert.slug)}
                                 >
                                     <div className="flex items-start justify-between mb-3">
                                         <h4 className="text-sm font-semibold text-slate-900 leading-tight line-clamp-2 flex-1">

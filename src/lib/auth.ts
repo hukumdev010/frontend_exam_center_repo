@@ -201,6 +201,21 @@ class AuthService {
     }
   }
 
+  async login(user: User, token: string) {
+    // Store authentication data
+    this.setStorageItem('auth_token', token)
+    this.setStorageItem('user_data', JSON.stringify(user))
+    
+    // Update state
+    this.state = {
+      user,
+      isAuthenticated: true,
+      isLoading: false
+    }
+    
+    this.notifyListeners()
+  }
+
   async signOut() {
     try {
       // Get token for logout endpoint

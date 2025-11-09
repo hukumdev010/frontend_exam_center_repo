@@ -32,33 +32,23 @@ interface SidebarProps {
     className?: string;
 }
 
-export function Sidebar({ userRole = "student", className }: SidebarProps) {
-    const [collapsed, setCollapsed] = useState(false);
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const pathname = usePathname();
-
-    const studentItems: SidebarItem[] = [
-        { title: "Dashboard", href: "/dashboard", icon: Home },
-        { title: "Student Portal", href: "/dashboard/student", icon: BookOpen },
-        { title: "Categories", href: "/dashboard/categories", icon: BookOpen },
-        { title: "Quizzes", href: "/quiz", icon: Award },
-        { title: "Sessions", href: "/sessions", icon: Calendar },
-        { title: "Profile", href: "/dashboard/profile", icon: User },
-    ];
-
-    const teacherAdditionalItems: SidebarItem[] = [
-        { title: "Teaching Dashboard", href: "/dashboard/teacher", icon: GraduationCap },
-        { title: "My Teaching Sessions", href: "/dashboard/teacher/sessions", icon: Calendar },
-        { title: "My Students", href: "/dashboard/teacher/students", icon: Users },
-        { title: "Teaching Analytics", href: "/dashboard/teacher/analytics", icon: BarChart3 },
-    ];
-
-    // Always include student items; add teacher items if user is a teacher
-    const items = userRole === "teacher"
-        ? [...studentItems, ...teacherAdditionalItems]
-        : studentItems;
-
-    const SidebarContent = () => (
+// Define SidebarContent component outside to avoid recreation during render
+function SidebarContentComponent({
+    collapsed,
+    setCollapsed,
+    setMobileOpen,
+    items,
+    pathname,
+    userRole
+}: {
+    collapsed: boolean;
+    setCollapsed: (collapsed: boolean) => void;
+    setMobileOpen: (open: boolean) => void;
+    items: SidebarItem[];
+    pathname: string;
+    userRole: "student" | "teacher" | "admin";
+}) {
+    return (
         <div className="flex h-full flex-col">
             {/* Header */}
             <div className={cn(
@@ -155,6 +145,33 @@ export function Sidebar({ userRole = "student", className }: SidebarProps) {
             </div>
         </div>
     );
+}
+
+export function Sidebar({ userRole = "student", className }: SidebarProps) {
+    const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const pathname = usePathname();
+
+    const studentItems: SidebarItem[] = [
+        { title: "Dashboard", href: "/dashboard", icon: Home },
+        { title: "Student Portal", href: "/dashboard/student", icon: BookOpen },
+        { title: "Categories", href: "/dashboard/categories", icon: BookOpen },
+        { title: "Quizzes", href: "/quiz", icon: Award },
+        { title: "Sessions", href: "/sessions", icon: Calendar },
+        { title: "Profile", href: "/dashboard/profile", icon: User },
+    ];
+
+    const teacherAdditionalItems: SidebarItem[] = [
+        { title: "Teaching Hub", href: "/dashboard/teaching", icon: GraduationCap },
+        { title: "My Teaching Sessions", href: "/dashboard/teaching/sessions", icon: Calendar },
+        { title: "My Students", href: "/dashboard/teaching/students", icon: Users },
+        { title: "My Qualifications", href: "/dashboard/qualifications", icon: BarChart3 },
+    ];
+
+    // Always include student items; add teacher items if user is a teacher
+    const items = userRole === "teacher"
+        ? [...studentItems, ...teacherAdditionalItems]
+        : studentItems;
 
     return (
         <>
@@ -182,7 +199,14 @@ export function Sidebar({ userRole = "student", className }: SidebarProps) {
                 collapsed ? "lg:w-16" : "lg:w-64",
                 className
             )}>
-                <SidebarContent />
+                <SidebarContentComponent
+                    collapsed={collapsed}
+                    setCollapsed={setCollapsed}
+                    setMobileOpen={setMobileOpen}
+                    items={items}
+                    pathname={pathname}
+                    userRole={userRole}
+                />
             </div>
 
             {/* Mobile sidebar */}
@@ -190,7 +214,14 @@ export function Sidebar({ userRole = "student", className }: SidebarProps) {
                 "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:hidden",
                 mobileOpen ? "translate-x-0" : "-translate-x-full"
             )}>
-                <SidebarContent />
+                <SidebarContentComponent
+                    collapsed={collapsed}
+                    setCollapsed={setCollapsed}
+                    setMobileOpen={setMobileOpen}
+                    items={items}
+                    pathname={pathname}
+                    userRole={userRole}
+                />
             </div>
         </>
     );

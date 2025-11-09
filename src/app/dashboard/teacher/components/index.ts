@@ -1,3 +1,4 @@
+// Re-export all components
 export { TeacherDashboardHeader } from './TeacherDashboardHeader';
 export { TeacherStatsCards } from './TeacherStatsCards';
 export { RecentSessions } from './RecentSessions';

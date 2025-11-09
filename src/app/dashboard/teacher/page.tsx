@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { TeacherService, TeacherProfile, TeachingSession } from "./services";
+import { TeacherProfile, TeachingSession } from "./services";
+import { useTeacherProfile, useMyTeachingSessions } from "@/hooks/useApi";
 import {
     TeacherDashboardHeader,
     TeacherStatsCards,
@@ -20,49 +21,37 @@ import {
 } from "./components";
 
 export default function TeacherDashboard() {
-    const { data: session, status, getToken, getAuthHeaders } = useSession();
+    const { status } = useSession();
     const router = useRouter();
-    const [teacherProfile, setTeacherProfile] = useState<TeacherProfile | null>(null);
-    const [teachingSessions, setTeachingSessions] = useState<TeachingSession[]>([]);
-    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("overview");
 
-    const loadTeacherData = useCallback(async () => {
-        try {
-            setLoading(true);
-            const token = getToken();
+    // Use SWR hooks for data fetching
+    const { data: teacherProfileData, isLoading: profileLoading, error: profileError } = useTeacherProfile();
+    const { data: teachingSessionsData, isLoading: sessionsLoading } = useMyTeachingSessions();
 
-            if (!token) {
-                router.push("/auth");
-                return;
-            }
+    // Type the data properly
+    const teacherProfile = teacherProfileData as TeacherProfile | undefined;
+    const teachingSessions = (teachingSessionsData as TeachingSession[]) || [];
 
-            try {
-                const { profile, sessions } = await TeacherService.getAllTeacherData(getAuthHeaders());
-                setTeacherProfile(profile);
-                setTeachingSessions(sessions);
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                if (errorMessage.includes('404') || errorMessage.includes('403')) {
-                    router.push("/dashboard/teacher/apply");
-                    return;
-                }
-                throw error;
-            }
-        } catch (error) {
-            console.error("Error loading teacher data:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [router, getToken, getAuthHeaders]);
+    // Calculate overall loading state
+    const loading = profileLoading || sessionsLoading;
 
     useEffect(() => {
         if (status !== 'loading' && status === 'unauthenticated') {
-            router.push("/auth");
-        } else if (status === 'authenticated' && session) {
-            loadTeacherData();
+            router.push("/login");
         }
-    }, [session, status, router, loadTeacherData]);
+    }, [status, router]);
+
+    // Handle teacher profile errors (404/403 means not a teacher)
+    useEffect(() => {
+        if (profileError) {
+            const errorMessage = profileError.message || String(profileError);
+            if (errorMessage.includes('404') || errorMessage.includes('403')) {
+                router.push("/dashboard/teacher/apply");
+                return;
+            }
+        }
+    }, [profileError, router]);
 
     const getSessionStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
@@ -81,7 +70,8 @@ export default function TeacherDashboard() {
         );
     }
 
-    if (!teacherProfile) {
+    // If there was an error fetching profile or profile is null, show apply page
+    if (profileError || !teacherProfile) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Card className="w-full max-w-md">
@@ -102,14 +92,13 @@ export default function TeacherDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+        <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <TeacherDashboardHeader teacherProfile={teacherProfile} />
 
                 {/* Stats Cards */}
                 <TeacherStatsCards
-                    teacherProfile={teacherProfile}
                     teachingSessions={teachingSessions}
                 />
 

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
     User,
@@ -17,32 +16,26 @@ import {
     GraduationCap,
     Clock,
     ChevronRight,
-    Trophy,
-    Target,
-    TrendingUp,
-    CheckCircle,
-    Star
+    Trophy
 } from "lucide-react";
 import Link from "next/link";
-import { DashboardService } from "./services";
-import { StudentService, UserProgress as StudentProgress } from "./student/services";
-import { TeacherService } from "./teacher/services";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchTeacherEligibility, fetchTeacherProfile } from "@/store/slices/teacherSlice";
+// Redux imports removed - using SWR for data fetching
+import {
+    useUserActivity,
+    useUserProgress,
+    useMyTeachingSessions
+} from "@/hooks/useApi";
+import { useTeacherEligibility } from "@/hooks/useTeacherEligibility";
 
-interface DashboardStats {
-    totalQuizzes: number;
-    completedQuizzes: number;
-    avgScore: number;
-    totalCertifications: number;
-    teachingQualifications?: number;
-    teachingSessions?: number;
-    studentsHelped?: number;
-}
-
-interface ProgressItem {
+interface UserProgressItem {
+    id: number;
     score: number;
-    // Add more properties as needed
+    attempts: number;
+    passed: boolean;
+    certification_name: string;
+    certification_id: number;
+    category_name: string;
+    last_attempted: string;
 }
 
 interface ActivityItem {
@@ -51,128 +44,47 @@ interface ActivityItem {
     created_at: string;
 }
 
-interface TeachingEligibility {
-    is_eligible: boolean;
-    qualifications_count: number;
-    has_teacher_profile: boolean;
-    teacher_status?: string;
-    qualifications: any[];
+interface TeachingSession {
+    id: number;
+    title: string;
+    scheduled_at: string;
 }
 
-
-
 export default function DashboardPage() {
-    const { data: session, status, getAuthHeaders } = useSession();
+    const { data: session, status } = useSession();
     const router = useRouter();
-    const dispatch = useAppDispatch();
 
-    // Redux state
-    const { eligibility, profile, isTeacher, loading } = useAppSelector((state) => state.teacher);
+    // Get teacher eligibility via SWR
+    const { qualifications } = useTeacherEligibility();
+    const isTeacher = qualifications?.has_teacher_profile || false;
 
-    const [stats, setStats] = useState<DashboardStats>({
-        totalQuizzes: 0,
-        completedQuizzes: 0,
-        avgScore: 0,
-        totalCertifications: 0,
-    });
-    const [isLoadingStats, setIsLoadingStats] = useState(true);
-    const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
-    const [progress, setProgress] = useState<StudentProgress[]>([]);
-    const [loadingProgress, setLoadingProgress] = useState(true);
+    // SWR hooks for data fetching
+    const { data: userActivity = [] as ActivityItem[] } = useUserActivity(10);
+    const { data: userProgress = [] as UserProgressItem[], isLoading: progressLoading } = useUserProgress();
+    const { data: teachingSessions = [] as TeachingSession[] } = useMyTeachingSessions();
 
+    // Auth redirect effect
     useEffect(() => {
         if (status !== 'loading' && status === 'unauthenticated') {
-            router.push("/auth");
+            router.push("/login");
         }
     }, [status, router]);
 
-    useEffect(() => {
-        if (session?.user?.id) {
-            checkTeacherRole();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session?.user?.id, dispatch]);
+    // Teacher eligibility is now handled by the layout via SWR
 
-    // Load dashboard stats when teacher status changes
-    useEffect(() => {
-        if (session?.user?.id && eligibility !== null) {
-            loadDashboardStats();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session?.user?.id, isTeacher, eligibility]);
+    // Teacher profile is now handled by SWR hooks in individual components
+    // Remove the manual dispatch to prevent loops
 
-    // Fetch teacher profile if user is a teacher but profile not loaded
-    useEffect(() => {
-        if (isTeacher && !profile && !loading.profile && eligibility?.has_teacher_profile) {
-            dispatch(fetchTeacherProfile(getAuthHeaders()));
-        }
-    }, [isTeacher, profile, loading.profile, eligibility, dispatch, getAuthHeaders]);
+    // Calculate derived stats from userProgress
+    const progressData = Array.isArray(userProgress) ? userProgress : [];
+    const totalCertifications = progressData.length || 0;
+    const completedQuizzes = progressData.filter((p: UserProgressItem) => p.score > 0).length || 0;
+    const avgScore = progressData.length > 0
+        ? Math.round(progressData.reduce((sum: number, p: UserProgressItem) => sum + (p.score || 0), 0) / progressData.length)
+        : 0;
 
-    const checkTeacherRole = async () => {
-        if (session?.user?.id) {
-            // Fetch eligibility data using Redux
-            dispatch(fetchTeacherEligibility(getAuthHeaders()));
-        }
-    };
-
-    const loadDashboardStats = async () => {
-        try {
-            setIsLoadingStats(true);
-            setLoadingProgress(true);
-
-            // Load progress stats (for students)
-            try {
-                const progressData = await StudentService.getProgress(getAuthHeaders());
-                const totalCertifications = progressData.length;
-                const completedQuizzes = progressData.filter((p: ProgressItem) => p.score > 0).length;
-                const avgScore = progressData.length > 0
-                    ? progressData.reduce((sum: number, p: ProgressItem) => sum + (p.score || 0), 0) / progressData.length
-                    : 0;
-
-                setStats(prev => ({
-                    ...prev,
-                    totalCertifications,
-                    completedQuizzes,
-                    avgScore: Math.round(avgScore),
-                }));
-
-                // Set the detailed progress data for the new sections
-                setProgress(progressData);
-            } catch (error) {
-                console.error("Error loading progress:", error);
-            }
-
-            // If teacher, load teaching sessions and profile
-            if (isTeacher) {
-                try {
-                    const sessionsData = await TeacherService.getMyTeachingSessions(getAuthHeaders());
-                    setStats(prev => ({
-                        ...prev,
-                        teachingSessions: sessionsData.length,
-                    }));
-
-                    // Also fetch the teacher profile if needed (moved to separate useEffect)
-                    // dispatch(fetchTeacherProfile(getAuthHeaders()));
-                } catch (error) {
-                    console.error("Error loading teaching sessions:", error);
-                }
-            }
-
-            // Load recent activity
-            try {
-                const activityData = await DashboardService.getUserActivity(getAuthHeaders(), 10);
-                setRecentActivity(activityData);
-            } catch (error) {
-                console.error("Error loading recent activity:", error);
-            }
-
-        } catch (error) {
-            console.error("Error loading dashboard stats:", error);
-        } finally {
-            setIsLoadingStats(false);
-            setLoadingProgress(false);
-        }
-    };
+    const isLoadingStats = progressLoading;
+    const loadingProgress = progressLoading;
 
     if (status === 'loading') {
         return (
@@ -196,7 +108,7 @@ export default function DashboardPage() {
                         <Award className="h-4 w-4 text-blue-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalCertifications}</div>
+                        <div className="text-2xl font-bold">{totalCertifications}</div>
                         <p className="text-xs text-muted-foreground">Available to practice</p>
                     </CardContent>
                 </Card>
@@ -207,7 +119,7 @@ export default function DashboardPage() {
                         <BookOpen className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.completedQuizzes}</div>
+                        <div className="text-2xl font-bold">{completedQuizzes}</div>
                         <p className="text-xs text-muted-foreground">Quizzes completed</p>
                     </CardContent>
                 </Card>
@@ -218,7 +130,7 @@ export default function DashboardPage() {
                         <BarChart3 className="h-4 w-4 text-orange-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.avgScore}%</div>
+                        <div className="text-2xl font-bold">{avgScore}%</div>
                         <p className="text-xs text-muted-foreground">Across all quizzes</p>
                     </CardContent>
                 </Card>
@@ -230,7 +142,7 @@ export default function DashboardPage() {
                             <Users className="h-4 w-4 text-purple-500" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{stats.teachingSessions || 0}</div>
+                            <div className="text-2xl font-bold">{Array.isArray(teachingSessions) ? teachingSessions.length : 0}</div>
                             <p className="text-xs text-muted-foreground">Sessions created</p>
                         </CardContent>
                     </Card>
@@ -301,23 +213,23 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                <Link href="/dashboard/teacher" className="block">
+                                <Link href="/dashboard/teaching" className="block">
                                     <Button className="w-full justify-between" variant="outline">
-                                        Teacher Dashboard
+                                        Teaching Hub
                                         <ChevronRight className="w-4 h-4" />
                                     </Button>
                                 </Link>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Link href="/dashboard/teacher/sessions">
+                                    <Link href="/dashboard/teaching/sessions">
                                         <Button variant="ghost" size="sm" className="w-full">
                                             <Calendar className="w-4 h-4 mr-2" />
                                             My Sessions
                                         </Button>
                                     </Link>
-                                    <Link href="/dashboard/teacher/profile">
+                                    <Link href="/dashboard/qualifications">
                                         <Button variant="ghost" size="sm" className="w-full">
                                             <User className="w-4 h-4 mr-2" />
-                                            Profile
+                                            Qualifications
                                         </Button>
                                     </Link>
                                 </div>
@@ -337,9 +249,9 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                <Link href="/dashboard/teacher/apply" className="block">
+                                <Link href="/dashboard/qualifications" className="block">
                                     <Button className="w-full justify-between" variant="outline">
-                                        Apply to Teach
+                                        Become a Teacher
                                         <ChevronRight className="w-4 h-4" />
                                     </Button>
                                 </Link>
@@ -350,10 +262,10 @@ export default function DashboardPage() {
                                             Find Sessions
                                         </Button>
                                     </Link>
-                                    <Link href="/dashboard/teacher/eligibility">
+                                    <Link href="/quiz">
                                         <Button variant="ghost" size="sm" className="w-full">
                                             <Users className="w-4 h-4 mr-2" />
-                                            Eligibility
+                                            Take Quizzes
                                         </Button>
                                     </Link>
                                 </div>
@@ -379,11 +291,11 @@ export default function DashboardPage() {
                                     <div className="animate-pulse bg-gray-200 h-3 rounded w-1/2"></div>
                                 </div>
                             </div>
-                        ) : recentActivity.length > 0 ? (
-                            <div className="space-y-3">
-                                {recentActivity.map((activity, index) => (
+                        ) : Array.isArray(userActivity) && userActivity.length > 0 ? (
+                            <div className="space-y-4">
+                                {userActivity.map((activity: ActivityItem, index: number) => (
                                     <div key={index} className="flex items-center space-x-4 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                                        <div className="flex-shrink-0">
+                                        <div className="shrink-0">
                                             {activity.score >= 80 ? (
                                                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                                                     <Award className="w-5 h-5 text-green-600" />
@@ -436,7 +348,7 @@ export default function DashboardPage() {
                 <Card className="hover:shadow-lg transition-shadow">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5 text-blue-600" />
+                            {/* <TrendingUp className="w-5 h-5 text-blue-600" /> */}
                             Recent Practice
                         </CardTitle>
                         <CardDescription>Your recent quiz attempts and progress</CardDescription>
@@ -452,9 +364,9 @@ export default function DashboardPage() {
                                     </div>
                                 ))}
                             </div>
-                        ) : progress.filter(p => p.attempts > 0).length > 0 ? (
+                        ) : progressData.filter((p: UserProgressItem) => p.attempts > 0).length > 0 ? (
                             <div className="space-y-4">
-                                {progress.filter(p => p.attempts > 0).slice(0, 5).map((item) => (
+                                {progressData.filter((p: UserProgressItem) => p.attempts > 0).slice(0, 5).map((item: UserProgressItem) => (
                                     <div key={item.id} className="border border-gray-100 rounded-lg p-4">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
@@ -517,9 +429,9 @@ export default function DashboardPage() {
                                     </div>
                                 ))}
                             </div>
-                        ) : progress.filter(p => p.passed).length > 0 ? (
+                        ) : progressData.filter((p: UserProgressItem) => p.passed).length > 0 ? (
                             <div className="space-y-4 max-h-96 overflow-y-auto">
-                                {progress.filter(p => p.passed).map((item) => (
+                                {progressData.filter((p: UserProgressItem) => p.passed).map((item: UserProgressItem) => (
                                     <div key={item.id} className="border border-gray-100 rounded-lg p-4">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>

@@ -15,7 +15,9 @@ export default function ClientOnly({ children, fallback = null }: ClientOnlyProp
     const [hasMounted, setHasMounted] = useState(false);
 
     useEffect(() => {
-        setHasMounted(true);
+        // Use a timeout to avoid calling setState during render
+        const timer = setTimeout(() => setHasMounted(true), 0);
+        return () => clearTimeout(timer);
     }, []);
 
     if (!hasMounted) {

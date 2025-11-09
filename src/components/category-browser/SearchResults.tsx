@@ -26,7 +26,7 @@ export function SearchResults({
     const router = useRouter();
 
     const handleCertificationClick = (slug: string) => {
-        router.push(`/quiz/${slug}`);
+        router.push(`/quiz/${slug}/info`);
     };
 
     const handleTeacherClick = (teacherId: number) => {
@@ -55,7 +55,7 @@ export function SearchResults({
     };
 
     return (
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden">
             <SearchResultsHeader
                 activeTab={activeTab}
                 searchQuery={searchQuery}

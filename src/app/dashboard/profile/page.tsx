@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { TeacherService } from "../teacher/services";
+
 import {
     ApprovalStatusCard,
     BasicInformationCard,
@@ -34,7 +34,7 @@ interface TeacherProfile {
 }
 
 export default function DashboardProfilePage() {
-    const { data: session, status, getAuthHeaders } = useSession();
+    const { data: session, status } = useSession();
     const router = useRouter();
 
     const [profile, setProfile] = useState<TeacherProfile>({
@@ -54,7 +54,7 @@ export default function DashboardProfilePage() {
 
     useEffect(() => {
         if (status !== 'loading' && status === 'unauthenticated') {
-            router.push("/auth");
+            router.push("/login");
         }
     }, [status, router]);
 

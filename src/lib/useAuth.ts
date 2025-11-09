@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { authService, AuthState } from './auth'
+import { authService, AuthState, User } from './auth'
 
 export function useAuth() {
   // Initialize with loading state to avoid hydration mismatch
@@ -10,21 +10,29 @@ export function useAuth() {
   }))
 
   useEffect(() => {
-    // Get current state from service
-    setAuthState(authService.getState())
+    // Use a timeout to avoid setState during render
+    const timer = setTimeout(() => {
+      // Get current state from service
+      setAuthState(authService.getState())
+    }, 0)
     
     // Ensure auth service is initialized
     authService.ensureInitialized()
     
     // Subscribe to state changes
     const unsubscribe = authService.subscribe(setAuthState)
-    return unsubscribe
+    
+    return () => {
+      clearTimeout(timer)
+      unsubscribe()
+    }
   }, [])
 
   return {
     user: authState.user,
     isAuthenticated: authState.isAuthenticated,
     isLoading: authState.isLoading,
+    login: (user: User, token: string) => authService.login(user, token),
     signIn: () => authService.signInWithGoogle(),
     signOut: () => authService.signOut(),
     getToken: () => authService.getToken(),

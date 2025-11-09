@@ -5,10 +5,19 @@ import { Button } from "./ui/button";
 import { X, Bot, Send, Loader2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_ENDPOINTS } from "@/lib/api-config";
+import { useAIHealth } from "@/hooks/useApi";
 
 interface GeminiAssistantProps {
     currentQuestion?: string;
     context?: string;
+    questionData?: {
+        id: number;
+        question_hash?: string;
+        ai_assistant?: {
+            response: string;
+            cached: boolean;
+        };
+    };
 }
 
 interface ChatMessage {
@@ -18,35 +27,15 @@ interface ChatMessage {
     timestamp: Date;
 }
 
-export function GeminiAssistant({ currentQuestion, context }: GeminiAssistantProps) {
+export function GeminiAssistant({ currentQuestion, context, questionData }: GeminiAssistantProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [apiHealthy, setApiHealthy] = useState(false);
 
-    useEffect(() => {
-        // Check if AI service is available
-        const checkAIHealth = async () => {
-            try {
-                const token = localStorage.getItem('auth_token') || 'mock_token';
-                const response = await fetch(API_ENDPOINTS.ai.health, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setApiHealthy(data.gemini_configured);
-                }
-            } catch (error) {
-                console.error('Failed to check AI health:', error);
-                setApiHealthy(false);
-            }
-        };
-
-        checkAIHealth();
-    }, []);
+    // Use SWR hook to check AI health  
+    const { data: aiHealthData } = useAIHealth();
+    const apiHealthy = aiHealthData?.gemini_configured || false;
 
     useEffect(() => {
         if (isOpen && messages.length === 0) {
@@ -81,6 +70,27 @@ How can I help you study today?`,
         setIsLoading(true);
 
         try {
+            // Check if we should use cached response for the first question about this topic
+            if (questionData?.ai_assistant?.cached &&
+                questionData.ai_assistant.response &&
+                messages.length <= 1 && // Only for initial questions
+                (inputValue.toLowerCase().includes('explain') ||
+                    inputValue.toLowerCase().includes('help') ||
+                    inputValue.toLowerCase().includes('understand'))) {
+
+                // Use cached response
+                const cachedMessage: ChatMessage = {
+                    id: Date.now().toString(),
+                    content: questionData.ai_assistant.response + "\n\n*[This response was retrieved from cache]*",
+                    isUser: false,
+                    timestamp: new Date()
+                };
+
+                setMessages(prev => [...prev, cachedMessage]);
+                setIsLoading(false);
+                return;
+            }
+
             const token = localStorage.getItem('auth_token') || 'mock_token';
 
             const requestBody = {
@@ -90,7 +100,9 @@ How can I help you study today?`,
                 conversation_history: messages.map(msg => ({
                     content: msg.content,
                     is_user: msg.isUser
-                }))
+                })),
+                question_id: questionData?.id,
+                question_hash: questionData?.question_hash
             };
 
             const response = await fetch(API_ENDPOINTS.ai.chat, {
@@ -208,8 +220,8 @@ How can I help you study today?`,
                                 >
                                     <div
                                         className={`max-w-[80%] p-3 rounded-lg ${message.isUser
-                                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                                                : 'bg-slate-100 text-slate-800'
+                                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                                            : 'bg-slate-100 text-slate-800'
                                             }`}
                                     >
                                         <div className="flex items-start gap-2">

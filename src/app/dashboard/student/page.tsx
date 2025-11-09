@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StudentService, UserProgress, SessionBooking, AvailableSession } from "./services";
+import { UserProgress, SessionBooking, AvailableSession } from "./services";
+import { useUserProgress, useMyBookings, useAvailableSessions } from "@/hooks/useApi";
 import {
     DashboardHeader,
     StatsCards,
@@ -17,36 +18,28 @@ import {
 } from "./components";
 
 export default function StudentDashboard() {
-    const { data: session, status, getAuthHeaders } = useSession();
+    const { status } = useSession();
     const router = useRouter();
-    const [progress, setProgress] = useState<UserProgress[]>([]);
-    const [bookings, setBookings] = useState<SessionBooking[]>([]);
-    const [availableSessions, setAvailableSessions] = useState<AvailableSession[]>([]);
-    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("overview");
 
-    const loadStudentData = useCallback(async () => {
-        try {
-            setLoading(true);
-            const { progress, bookings, availableSessions } = await StudentService.getAllStudentData(getAuthHeaders());
-            setProgress(progress);
-            setBookings(bookings);
-            setAvailableSessions(availableSessions);
-        } catch (error) {
-            console.error("Error loading student data:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [getAuthHeaders]);
+    // Use SWR hooks for data fetching
+    const { data: progressData, isLoading: progressLoading } = useUserProgress();
+    const { data: bookingsData, isLoading: bookingsLoading } = useMyBookings();
+    const { data: availableSessionsData, isLoading: availableSessionsLoading } = useAvailableSessions();
+
+    // Type the data properly
+    const progress = (progressData as UserProgress[]) || [];
+    const bookings = (bookingsData as SessionBooking[]) || [];
+    const availableSessions = (availableSessionsData as AvailableSession[]) || [];
+
+    // Calculate overall loading state
+    const loading = progressLoading || bookingsLoading || availableSessionsLoading;
 
     useEffect(() => {
         if (status !== 'loading' && status === 'unauthenticated') {
-            router.push("/auth");
-        } else if (status === 'authenticated' && session) {
-            loadStudentData();
+            router.push("/login");
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session?.user?.id]);
+    }, [status, router]);
 
 
 
@@ -82,7 +75,7 @@ export default function StudentDashboard() {
     const stats = getProgressStats();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 p-6">
+        <div className="min-h-screen bg-linear-to-br from-green-50 to-blue-100 p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <DashboardHeader />

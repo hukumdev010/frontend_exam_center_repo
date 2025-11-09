@@ -1,33 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSession } from "@/lib/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TeacherService, TeachingSession } from "../../teacher/services";
+// Define TeachingSession interface locally
+interface TeachingSession {
+    id: number;
+    title: string;
+    description: string;
+    session_type: string;
+    scheduled_for: string;
+    duration_hours: number;
+    max_participants: number;
+    session_fee: number;
+    location_type: string;
+    location_details: string;
+    status: string;
+    bookings_count: number;
+}
+import { useMyTeachingSessions } from "@/hooks/useApi";
 import { Calendar, Users, Clock, Plus, DollarSign } from "lucide-react";
 
 export default function TeachingSessionsPage() {
-    const { getAuthHeaders } = useSession();
-    const [loading, setLoading] = useState(true);
-    const [sessions, setSessions] = useState<TeachingSession[]>([]);
-
-    useEffect(() => {
-        loadTeachingSessions();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const loadTeachingSessions = async () => {
-        try {
-            const data = await TeacherService.getMyTeachingSessions(getAuthHeaders());
-            setSessions(data);
-        } catch (error) {
-            console.error("Error loading teaching sessions:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Use SWR hook for data fetching
+    const { data: sessionData, isLoading: loading } = useMyTeachingSessions();
+    const sessions = (sessionData as TeachingSession[]) || [];
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
@@ -85,7 +82,7 @@ export default function TeachingSessionsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {sessions.filter(s => s.status === 'scheduled').length}
+                            {sessions.filter((s: TeachingSession) => s.status === 'scheduled').length}
                         </div>
                     </CardContent>
                 </Card>
@@ -97,7 +94,7 @@ export default function TeachingSessionsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {sessions.reduce((sum, s) => sum + (s.bookings_count || 0), 0)}
+                            {sessions.reduce((sum: number, s: TeachingSession) => sum + (s.bookings_count || 0), 0)}
                         </div>
                     </CardContent>
                 </Card>
@@ -109,7 +106,7 @@ export default function TeachingSessionsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            ${sessions.reduce((sum, s) => sum + ((s.session_fee || 0) * (s.bookings_count || 0)), 0).toFixed(0)}
+                            ${sessions.reduce((sum: number, s: TeachingSession) => sum + ((s.session_fee || 0) * (s.bookings_count || 0)), 0).toFixed(0)}
                         </div>
                     </CardContent>
                 </Card>
@@ -123,7 +120,7 @@ export default function TeachingSessionsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {sessions.map((session) => (
+                            {sessions.map((session: TeachingSession) => (
                                 <div key={session.id} className="border rounded-lg p-4">
                                     <div className="flex items-center justify-between">
                                         <div className="space-y-2">

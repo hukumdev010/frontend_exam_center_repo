@@ -1,57 +1,44 @@
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, BookOpen, Settings, Award } from "lucide-react";
+import React from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Users, Award, BookOpen, Plus } from "lucide-react";
 import Link from "next/link";
 
 export function TeacherQuickActions() {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <Link href="/dashboard/teacher/sessions/create">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Plus className="w-5 h-5 text-blue-500" />
-                            Create Session
-                        </CardTitle>
-                        <CardDescription>Schedule a new teaching session</CardDescription>
-                    </CardHeader>
-                </Link>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <Link href="/dashboard/student">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <BookOpen className="w-5 h-5 text-blue-500" />
-                            Student Portal
-                        </CardTitle>
-                        <CardDescription>Continue your own learning journey</CardDescription>
-                    </CardHeader>
-                </Link>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <Link href="/dashboard/teacher/profile">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Settings className="w-5 h-5 text-green-500" />
-                            Update Profile
-                        </CardTitle>
-                        <CardDescription>Edit your teaching profile</CardDescription>
-                    </CardHeader>
-                </Link>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <Link href="/quiz">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Award className="w-5 h-5 text-orange-500" />
-                            Continue Learning
-                        </CardTitle>
-                        <CardDescription>Take quizzes to gain more qualifications</CardDescription>
-                    </CardHeader>
-                </Link>
-            </Card>
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>Common tasks and shortcuts</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                    <Button asChild className="h-16">
+                        <Link href="/dashboard/teacher/sessions/create">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Schedule Session
+                        </Link>
+                    </Button>
+                    <Button variant="outline" asChild className="h-16">
+                        <Link href="/dashboard/teacher/profile">
+                            <Users className="h-4 w-4 mr-2" />
+                            Edit Profile
+                        </Link>
+                    </Button>
+                    <Button variant="outline" asChild className="h-16">
+                        <Link href="/certifications">
+                            <BookOpen className="h-4 w-4 mr-2" />
+                            Browse Certifications
+                        </Link>
+                    </Button>
+                    <Button variant="outline" asChild className="h-16">
+                        <Link href="/dashboard/teacher/analytics">
+                            <Award className="h-4 w-4 mr-2" />
+                            View Analytics
+                        </Link>
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
     );
 }

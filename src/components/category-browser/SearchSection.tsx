@@ -12,9 +12,10 @@ interface SearchSectionProps {
     ) => void;
     onSearchLoading: (loading: boolean) => void;
     onError: (error: string | null) => void;
+    compact?: boolean;
 }
 
-export function SearchSection({ onSearchResults, onSearchLoading, onError }: SearchSectionProps) {
+export function SearchSection({ onSearchResults, onSearchLoading, onError, compact = false }: SearchSectionProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [activeSearchTab, setActiveSearchTab] = useState<SearchTab>("certifications");
 
@@ -101,21 +102,24 @@ export function SearchSection({ onSearchResults, onSearchLoading, onError }: Sea
     };
 
     return (
-        <div className="bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-purple-50/30 rounded-3xl p-8 shadow-lg border border-blue-100/50">
-            <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-                    Discover & Learn
-                </h2>
-                <p className="text-slate-600 text-lg">
-                    Find expert teachers or explore certification programs
-                </p>
-            </div>
+        <div className={`bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-purple-50/30 rounded-2xl ${compact ? 'p-4' : 'p-6'} shadow-lg border border-blue-100/50`}>
+            {!compact && (
+                <div className="text-center mb-4">
+                    <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-1">
+                        Discover & Learn
+                    </h2>
+                    <p className="text-slate-600">
+                        Find expert teachers or explore certification programs
+                    </p>
+                </div>
+            )}
             <TabbedSearchBar
                 onCertificationSearch={handleCertificationSearch}
                 onTeacherSearch={handleTeacherSearch}
                 onClear={handleClearSearch}
                 value={searchQuery}
                 activeTab={activeSearchTab}
+                compact={compact}
             />
         </div>
     );

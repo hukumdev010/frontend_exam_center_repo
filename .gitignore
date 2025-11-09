@@ -19,6 +19,8 @@ pids
 coverage/
 *.lcov
 
+.yarn/
+
 # nyc test coverage
 .nyc_output
 

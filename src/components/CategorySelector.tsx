@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { BookOpen, ArrowRight, Award, Code, Server, Terminal, Cloud } from "lucide-react";
-import { API_ENDPOINTS } from "@/lib/api-config";
+import { useCategoriesWithCertifications } from "@/hooks/useApi";
 
 type Category = {
     id: number;
@@ -32,28 +31,7 @@ interface CategorySelectorProps {
 }
 
 export function CategorySelector({ onCertificationSelect }: CategorySelectorProps) {
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        fetchCategories();
-    }, []);
-
-    const fetchCategories = async () => {
-        try {
-            const response = await fetch(API_ENDPOINTS.categoriesWithCertifications);
-            if (!response.ok) {
-                throw new Error('Failed to fetch categories');
-            }
-            const data: Category[] = await response.json();
-            setCategories(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { data: categories = [], isLoading: loading, error } = useCategoriesWithCertifications();
 
     const getIconComponent = (iconName: string) => {
         switch (iconName) {
@@ -121,8 +99,8 @@ export function CategorySelector({ onCertificationSelect }: CategorySelectorProp
             <div className="min-h-screen bg-slate-50 py-8">
                 <div className="max-w-4xl mx-auto p-6">
                     <div className="text-center">
-                        <p className="text-red-600">Error: {error}</p>
-                        <Button onClick={fetchCategories} className="mt-4">
+                        <p className="text-red-600">Error loading categories</p>
+                        <Button onClick={() => window.location.reload()} className="mt-4">
                             Try Again
                         </Button>
                     </div>
@@ -145,7 +123,7 @@ export function CategorySelector({ onCertificationSelect }: CategorySelectorProp
                 </div>
 
                 <div className="space-y-8">
-                    {categories.map((category) => (
+                    {categories.map((category: Category) => (
                         <div key={category.id} className={`rounded-lg border-2 p-6 transition-all ${getCategoryColor(category.color)}`}>
                             <div className="flex items-center mb-4">
                                 {getIconComponent(category.icon)}
@@ -155,7 +133,7 @@ export function CategorySelector({ onCertificationSelect }: CategorySelectorProp
                             <p className="text-slate-600 mb-6">{category.description}</p>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {category.certifications.map((cert) => (
+                                {category.certifications.map((cert: Certification) => (
                                     <div
                                         key={cert.id}
                                         className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow"

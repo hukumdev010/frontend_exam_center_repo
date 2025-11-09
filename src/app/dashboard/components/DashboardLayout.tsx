@@ -9,7 +9,6 @@ import {
     ChevronRight,
     Home,
     BookOpen,
-    Award,
     Users,
     Calendar,
     User,
@@ -34,11 +33,16 @@ interface SidebarItem {
 }
 
 interface UserQualifications {
-    is_eligible: boolean;
+    is_eligible_to_apply: boolean;
+    is_eligible_to_teach: boolean;
     qualifications_count: number;
+    qualified_subjects: number;
     has_teacher_profile: boolean;
     teacher_status?: string;
-    qualifications: TeacherQualification[];
+    profile_created_at?: string;
+    approved_at?: string;
+    qualifications_by_subject: Record<string, TeacherQualification[]>;
+    next_steps: string;
 }
 
 interface TeacherQualification {
@@ -58,60 +62,25 @@ interface DashboardLayoutProps {
     pageDescription?: string;
 }
 
-export function DashboardLayout({
-    children,
-    qualifications,
-    userName,
-    userEmail,
-    pageTitle = "Dashboard",
-    pageDescription
-}: DashboardLayoutProps) {
-    const [collapsed, setCollapsed] = useState(false);
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const pathname = usePathname();
-
-    const hasTeachingQualifications = qualifications?.is_eligible || false;
-    const qualificationCount = qualifications?.qualifications_count || 0;
-
-    // Simple navigation - only show what's relevant
-    const learningItems: SidebarItem[] = [
-        { title: "Dashboard", href: "/dashboard", icon: Home },
-        { title: "Browse Subjects", href: "/dashboard/categories", icon: BookOpen },
-        { title: "Find Teachers", href: "/dashboard/teachers", icon: Users },
-        { title: "My Progress", href: "/dashboard/learning", icon: TrendingUp },
-        { title: "Quizzes", href: "/quiz", icon: Award },
-        { title: "Certificates", href: "/dashboard/certificates", icon: CheckCircle },
-    ];
-
-    // Only show teaching items if user actually has qualifications
-    const teachingItems: SidebarItem[] = hasTeachingQualifications ? [
-        {
-            title: "My Teaching",
-            href: "/dashboard/teaching",
-            icon: Users,
-            badge: qualificationCount > 0 ? qualificationCount.toString() : undefined
-        },
-        {
-            title: "Availability",
-            href: "/dashboard/teaching/availability",
-            icon: Calendar
-        },
-    ] : [];
-
-    // Account items - always visible
-    const accountItems: SidebarItem[] = [
-        {
-            title: hasTeachingQualifications ? "My Qualifications" : "Become a Teacher",
-            href: "/dashboard/qualifications",
-            icon: hasTeachingQualifications ? GraduationCap : Target,
-            badge: hasTeachingQualifications ? undefined : "Start here!"
-        },
-        { title: "Settings", href: "/dashboard/settings", icon: Settings },
-    ];
-
-    const items = [...learningItems, ...teachingItems, ...accountItems];
-
-    const SidebarContent = () => (
+// Sidebar Content Component
+function SidebarContent({
+    items,
+    collapsed,
+    pathname,
+    hasTeachingQualifications,
+    qualificationCount,
+    setCollapsed,
+    setMobileOpen
+}: {
+    items: SidebarItem[];
+    collapsed: boolean;
+    pathname: string;
+    hasTeachingQualifications: boolean;
+    qualificationCount: number;
+    setCollapsed: (collapsed: boolean) => void;
+    setMobileOpen: (open: boolean) => void;
+}) {
+    return (
         <div className="flex h-full flex-col">
             {/* Sidebar Header */}
             <div className={cn(
@@ -121,7 +90,7 @@ export function DashboardLayout({
                 <Link href="/" className={cn("flex items-center gap-2", collapsed && "justify-center")}>
                     <GraduationCap className="h-8 w-8 text-blue-600" />
                     {!collapsed && (
-                        <span className="text-xl font-bold text-gray-900">ExamCenter</span>
+                        <span className="text-xl font-bold text-gray-900">EduNeps</span>
                     )}
                 </Link>
                 <Button
@@ -214,8 +183,25 @@ export function DashboardLayout({
             </div>
         </div>
     );
+}
 
-    const DashboardHeader = () => (
+// Dashboard Header Component
+function DashboardHeader({
+    pageTitle,
+    pageDescription,
+    userName,
+    userEmail,
+    hasTeachingQualifications,
+    qualificationCount
+}: {
+    pageTitle?: string;
+    pageDescription?: string;
+    userName?: string;
+    userEmail?: string;
+    hasTeachingQualifications: boolean;
+    qualificationCount: number;
+}) {
+    return (
         <header className="bg-white border-b border-gray-200 px-6 py-3">
             <div className="flex items-center justify-between">
                 <div className="lg:ml-0 ml-12">
@@ -258,6 +244,79 @@ export function DashboardLayout({
             </div>
         </header>
     );
+}
+
+export function DashboardLayout({
+    children,
+    qualifications,
+    userName,
+    userEmail,
+    pageTitle = "Dashboard",
+    pageDescription
+}: DashboardLayoutProps) {
+    const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const pathname = usePathname();
+
+    const hasTeachingQualifications = qualifications?.is_eligible_to_teach || false;
+    const qualificationCount = qualifications?.qualifications_count || 0;
+
+    // Debug logging
+    console.log("🔍 Debug - Qualifications data:", {
+        qualifications,
+        hasTeachingQualifications,
+        qualificationCount,
+        is_eligible_to_teach: qualifications?.is_eligible_to_teach
+    });
+
+    // Simple navigation - only show what's relevant
+    const learningItems: SidebarItem[] = [
+        { title: "Dashboard", href: "/dashboard", icon: Home },
+        { title: "Browse Subjects", href: "/dashboard/categories", icon: BookOpen },
+        { title: "Find Teachers", href: "/dashboard/teachers", icon: Users },
+        { title: "My Progress", href: "/dashboard/learning", icon: TrendingUp },
+        { title: "Certificates", href: "/dashboard/certificates", icon: CheckCircle },
+    ];
+
+    // Only show teaching items if user actually has qualifications
+    const teachingItems: SidebarItem[] = hasTeachingQualifications ? [
+        {
+            title: "Teaching Hub",
+            href: "/dashboard/teaching",
+            icon: GraduationCap,
+            badge: qualificationCount > 0 ? qualificationCount.toString() : undefined
+        },
+        {
+            title: "My Sessions",
+            href: "/dashboard/teaching/sessions",
+            icon: Calendar
+        },
+        {
+            title: "My Students",
+            href: "/dashboard/teaching/students",
+            icon: Users
+        },
+        {
+            title: "Availability",
+            href: "/dashboard/teaching/availability",
+            icon: Calendar
+        },
+    ] : [];
+
+    // Account items - always visible
+    const accountItems: SidebarItem[] = [
+        {
+            title: hasTeachingQualifications ? "My Qualifications" : "Become a Teacher",
+            href: "/dashboard/qualifications",
+            icon: hasTeachingQualifications ? Target : Target,
+            badge: hasTeachingQualifications
+                ? `${qualificationCount} ${qualificationCount === 1 ? 'Subject' : 'Subjects'}`
+                : "Start here!"
+        },
+        { title: "Settings", href: "/dashboard/settings", icon: Settings },
+    ];
+
+    const items = [...learningItems, ...teachingItems, ...accountItems];
 
     return (
         <div className="flex h-screen bg-gray-50">
@@ -284,7 +343,15 @@ export function DashboardLayout({
                 "hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:bg-white lg:border-r lg:border-gray-200 lg:transition-all lg:duration-300",
                 collapsed ? "lg:w-16" : "lg:w-64"
             )}>
-                <SidebarContent />
+                <SidebarContent
+                    items={items}
+                    collapsed={collapsed}
+                    pathname={pathname}
+                    hasTeachingQualifications={hasTeachingQualifications}
+                    qualificationCount={qualificationCount}
+                    setCollapsed={setCollapsed}
+                    setMobileOpen={setMobileOpen}
+                />
             </div>
 
             {/* Mobile sidebar */}
@@ -292,7 +359,15 @@ export function DashboardLayout({
                 "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:hidden",
                 mobileOpen ? "translate-x-0" : "-translate-x-full"
             )}>
-                <SidebarContent />
+                <SidebarContent
+                    items={items}
+                    collapsed={collapsed}
+                    pathname={pathname}
+                    hasTeachingQualifications={hasTeachingQualifications}
+                    qualificationCount={qualificationCount}
+                    setCollapsed={setCollapsed}
+                    setMobileOpen={setMobileOpen}
+                />
             </div>
 
             {/* Main Content */}
@@ -300,7 +375,14 @@ export function DashboardLayout({
                 "flex-1 flex flex-col transition-all duration-300",
                 collapsed ? "lg:ml-16" : "lg:ml-64"
             )}>
-                <DashboardHeader />
+                <DashboardHeader
+                    pageTitle={pageTitle}
+                    pageDescription={pageDescription}
+                    userName={userName}
+                    userEmail={userEmail}
+                    hasTeachingQualifications={hasTeachingQualifications}
+                    qualificationCount={qualificationCount}
+                />
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-auto px-6 py-4">

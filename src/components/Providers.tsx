@@ -2,6 +2,7 @@
 
 import { Provider } from 'react-redux';
 import { store } from '@/store';
+import { SWRProvider } from '@/components/providers/SWRProvider';
 
 export function Providers({
     children,
@@ -10,7 +11,9 @@ export function Providers({
 }) {
     return (
         <Provider store={store}>
-            {children}
+            <SWRProvider>
+                {children}
+            </SWRProvider>
         </Provider>
     );
 }

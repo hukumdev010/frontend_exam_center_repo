@@ -6,4 +6,5 @@ export { SearchResultsHeader } from "./SearchResultsHeader";
 export { NoResults } from "./NoResults";
 export { SearchResults } from "./SearchResults";
 export { CategoryGrid } from "./CategoryGrid";
+export { CategoryGridLoading } from "./CategoryGridLoading";
 export { SearchSection } from "./SearchSection";

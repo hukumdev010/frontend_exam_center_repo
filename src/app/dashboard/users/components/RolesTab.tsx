@@ -19,18 +19,13 @@ import {
     Star
 } from 'lucide-react';
 import { Role, RoleCreate, Policy, Permission } from '@/types/rbac';
-import UsersService from '../services';
+import { useRoles, usePolicies, useAllPermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/useApi';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function RolesTab() {
-    const [roles, setRoles] = useState<Role[]>([]);
-    const [policies, setPolicies] = useState<Policy[]>([]);
-    const [permissions, setPermissions] = useState<Permission[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
-    const [total, setTotal] = useState(0);
     const [isCreating, setIsCreating] = useState(false);
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [formData, setFormData] = useState<RoleCreate>({
@@ -43,90 +38,46 @@ export default function RolesTab() {
 
     const itemsPerPage = 10;
 
-    const fetchRoles = async (page = 0, search = '') => {
-        try {
-            setLoading(true);
-            const response = await UsersService.listRoles({
-                skip: page * itemsPerPage,
-                limit: itemsPerPage,
-                search: search || undefined
-            });
-            setRoles(response.items);
-            setTotal(response.total);
-            setTotalPages(Math.ceil(response.total / itemsPerPage));
-            setError(null);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch roles');
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Debounced search with 500ms delay
+    const debouncedSearch = useDebounce((query: string) => {
+        setDebouncedSearchTerm(query);
+        setCurrentPage(0); // Reset to first page when searching
+    }, 500);
 
-    const fetchPoliciesAndPermissions = async () => {
-        try {
-            const [policiesResponse, permissionsResponse] = await Promise.all([
-                UsersService.listPolicies({ limit: 1000 }),
-                UsersService.listPermissions({ limit: 1000 })
-            ]);
-            setPolicies(policiesResponse.items);
-            setPermissions(permissionsResponse.items);
-        } catch (err) {
-            console.error('Failed to fetch policies and permissions:', err);
-        }
-    };
-
+    // Update debounced search term when searchTerm changes
     useEffect(() => {
-        const loadRoles = () => {
-            fetchRoles(currentPage, searchTerm);
-        };
-        loadRoles();
-        fetchPoliciesAndPermissions();
-    }, [currentPage, searchTerm]);
+        debouncedSearch(searchTerm);
+    }, [searchTerm, debouncedSearch]);
 
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            setCurrentPage(0);
-            fetchRoles(0, searchTerm);
-        }, 300);
-        return () => clearTimeout(timeoutId);
-    }, [searchTerm]);
+    // SWR hooks - use debouncedSearchTerm instead of searchTerm
+    const { data: rolesData, isLoading: loading, error: rolesError, mutate: mutateRoles } = useRoles(currentPage, itemsPerPage, debouncedSearchTerm);
+    const { data: policiesData } = usePolicies();
+    const { data: permissionsData } = useAllPermissions();
+    const { trigger: createRole } = useCreateRole();
+    const { trigger: updateRole } = useUpdateRole();
+    const { trigger: deleteRole } = useDeleteRole();
 
-    const handleCreate = async () => {
-        try {
-            await UsersService.createRole(formData);
-            setIsCreating(false);
-            setFormData({ name: '', description: '', policy_ids: [], permission_ids: [], is_default: false });
-            fetchRoles(currentPage, searchTerm);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create role');
-        }
-    };
-
-    const handleUpdate = async () => {
-        if (!editingRole) return;
-        try {
-            await UsersService.updateRole(editingRole.id, {
-                description: formData.description,
-                policy_ids: formData.policy_ids,
-                permission_ids: formData.permission_ids,
-                is_default: formData.is_default
-            });
-            setEditingRole(null);
-            setFormData({ name: '', description: '', policy_ids: [], permission_ids: [], is_default: false });
-            fetchRoles(currentPage, searchTerm);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to update role');
-        }
-    };
+    const roles = (rolesData as { items?: Role[] })?.items || [];
+    const totalPages = rolesData ? Math.ceil((rolesData as { total: number }).total / itemsPerPage) : 0;
+    const total = (rolesData as { total?: number })?.total || 0;
+    const policies = (policiesData as { items?: Policy[] })?.items || [];
+    const permissions = (permissionsData as { items?: Permission[] })?.items || [];
+    const error = rolesError?.message || null;
 
     const handleDelete = async (roleId: number) => {
-        if (!confirm('Are you sure you want to delete this role?')) return;
         try {
-            await UsersService.deleteRole(roleId);
-            fetchRoles(currentPage, searchTerm);
+            await deleteRole(String(roleId));
+            mutateRoles(); // Refresh the data
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to delete role');
+            console.error(err instanceof Error ? err.message : 'Failed to delete role');
         }
+    };
+
+    // Reset form function
+    const resetForm = () => {
+        setEditingRole(null);
+        setIsCreating(false);
+        setFormData({ name: '', description: '', policy_ids: [], permission_ids: [], is_default: false });
     };
 
     const startEdit = (role: Role) => {
@@ -134,16 +85,10 @@ export default function RolesTab() {
         setFormData({
             name: role.name,
             description: role.description || '',
-            policy_ids: role.policies.map(p => p.id),
-            permission_ids: role.permissions.map(p => p.id),
+            policy_ids: role.policies.map((p: { id: number }) => p.id),
+            permission_ids: role.permissions.map((p: { id: number }) => p.id),
             is_default: role.is_default
         });
-    };
-
-    const cancelEdit = () => {
-        setEditingRole(null);
-        setIsCreating(false);
-        setFormData({ name: '', description: '', policy_ids: [], permission_ids: [], is_default: false });
     };
 
     const togglePolicy = (policyId: number) => {
@@ -158,6 +103,31 @@ export default function RolesTab() {
             ? formData.permission_ids.filter(id => id !== permissionId)
             : [...(formData.permission_ids || []), permissionId];
         setFormData({ ...formData, permission_ids: newPermissionIds });
+    };
+
+    const handleCreate = async () => {
+        try {
+            await createRole(formData);
+            mutateRoles();
+            resetForm();
+        } catch (err) {
+            console.error(err instanceof Error ? err.message : 'Failed to create role');
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editingRole) return;
+        try {
+            await updateRole({ id: String(editingRole.id), data: formData });
+            mutateRoles();
+            resetForm();
+        } catch (err) {
+            console.error(err instanceof Error ? err.message : 'Failed to update role');
+        }
+    };
+
+    const cancelEdit = () => {
+        resetForm();
     };
 
     if (loading) {
@@ -227,7 +197,7 @@ export default function RolesTab() {
                             <div>
                                 <Label>Policies</Label>
                                 <div className="mt-2 space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                                    {policies.map((policy) => (
+                                    {policies.map((policy: Policy) => (
                                         <div key={policy.id} className="flex items-center space-x-2">
                                             <input
                                                 type="checkbox"
@@ -248,7 +218,7 @@ export default function RolesTab() {
                             <div>
                                 <Label>Permissions</Label>
                                 <div className="mt-2 space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                                    {permissions.map((permission) => (
+                                    {permissions.map((permission: Permission) => (
                                         <div key={permission.id} className="flex items-center space-x-2">
                                             <input
                                                 type="checkbox"
@@ -286,7 +256,7 @@ export default function RolesTab() {
 
             {/* Roles List */}
             <div className="space-y-2">
-                {roles.map((role) => (
+                {roles.map((role: Role) => (
                     <Card key={role.id} className="p-4">
                         <div className="flex items-start justify-between">
                             <div className="space-y-2">
@@ -307,7 +277,7 @@ export default function RolesTab() {
                                             Policies ({role.policies.length}):
                                         </div>
                                         <div className="flex flex-wrap gap-1">
-                                            {role.policies.slice(0, 3).map((policy) => (
+                                            {role.policies.slice(0, 3).map((policy: Policy) => (
                                                 <Badge key={policy.id} variant="outline" className="text-xs">
                                                     {policy.name}
                                                 </Badge>
@@ -324,7 +294,7 @@ export default function RolesTab() {
                                             Permissions ({role.permissions.length}):
                                         </div>
                                         <div className="flex flex-wrap gap-1">
-                                            {role.permissions.slice(0, 3).map((permission) => (
+                                            {role.permissions.slice(0, 3).map((permission: Permission) => (
                                                 <Badge key={permission.id} variant="outline" className="text-xs">
                                                     {permission.name}
                                                 </Badge>

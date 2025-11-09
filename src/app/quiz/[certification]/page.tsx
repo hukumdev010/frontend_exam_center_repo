@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ExamQuiz } from "@/components/ExamQuiz";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Award, Clock, Target, BookOpen } from "lucide-react";
-import { QuizService, Certification } from "./services";
+import { useSession } from "@/lib/useAuth";
+import Header from "@/components/Header";
+import { useCertificationQuizData } from "@/hooks/useApi";
 
 function QuizPageContent() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { data: session } = useSession();
 
-    const [certificationData, setCertificationData] = useState<Certification | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [quizStats, setQuizStats] = useState({
         sessionScore: 0,
         totalPoints: 0,
@@ -22,71 +22,35 @@ function QuizPageContent() {
         currentQuestion: 1,
         totalQuestions: 0
     });
-    const [mounted, setMounted] = useState(false);
 
     const certificationSlug = params.certification as string;
-    const currentQuestion = parseInt(searchParams.get('q') || '0');
+    // Convert 1-based URL parameter to 0-based array index
+    // URL uses q=1 for first question, but array index should be 0
+    const urlQuestionParam = parseInt(searchParams.get('q') || '1');
+    const currentQuestion = Math.max(0, urlQuestionParam - 1);
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    useEffect(() => {
-        const fetchCertificationData = async () => {
-            setLoading(true);
-            setError(null);
-
-            try {
-                const data = await QuizService.getCertificationData(certificationSlug);
-                setCertificationData(data);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'An error occurred');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (certificationSlug && mounted) {
-            fetchCertificationData();
-        }
-    }, [certificationSlug, mounted]);
+    // Use SWR hook for quiz data fetching only
+    const { data: certificationData, isLoading: loading, error } = useCertificationQuizData(certificationSlug);
 
     const handleBackToHome = () => {
         router.push('/');
     };
 
-    // Prevent hydration mismatch by not rendering until mounted
-    if (!mounted) {
-        return (
-            <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-                <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-blue-100/50 shadow-xl p-8 max-w-md w-full mx-4">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-                        <h3 className="text-lg font-semibold text-slate-900 mb-2">Loading Quiz</h3>
-                        <p className="text-slate-600">Preparing your certification exam...</p>
-                    </div>
-                </div>
-            </main>
-        );
-    }
+    // Memoize the stats update callback to prevent unnecessary re-renders
+    const handleStatsUpdate = useCallback((stats: {
+        sessionScore: number;
+        totalPoints: number;
+        progress: number;
+        currentQuestion: number;
+        totalQuestions: number;
+    }) => {
+        setQuizStats(stats);
+    }, []);
 
     if (loading) {
         return (
-            <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-                <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100/50 shadow-sm">
-                    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3">
-                        <div className="flex items-center">
-                            <Button
-                                variant="outline"
-                                onClick={handleBackToHome}
-                                className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm hover:bg-white h-9 px-3"
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                                <span>Back</span>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+                <Header />
                 <div className="max-w-[1600px] mx-auto p-4 sm:p-6">
                     <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-blue-100/50 shadow-xl p-6">
                         <div className="text-center">
@@ -96,7 +60,7 @@ function QuizPageContent() {
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
         );
     }
 
@@ -123,7 +87,7 @@ function QuizPageContent() {
                             <div className="bg-red-50 border border-red-200 rounded-xl p-6">
                                 <div className="text-red-600 text-4xl mb-4">⚠️</div>
                                 <h3 className="text-lg font-semibold text-red-900 mb-2">Oops! Something went wrong</h3>
-                                <p className="text-red-700 mb-6">{error}</p>
+                                <p className="text-red-700 mb-6">{error.message || 'An error occurred while loading the quiz.'}</p>
                                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                     <Button
                                         onClick={() => window.location.reload()}
@@ -149,21 +113,8 @@ function QuizPageContent() {
 
     if (!certificationData) {
         return (
-            <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-                <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100/50 shadow-sm">
-                    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3">
-                        <div className="flex items-center">
-                            <Button
-                                variant="outline"
-                                onClick={handleBackToHome}
-                                className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm hover:bg-white h-9 px-3"
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                                <span>Back</span>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+                <Header />
                 <div className="max-w-[1600px] mx-auto p-4 sm:p-6">
                     <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-blue-100/50 shadow-xl p-6">
                         <div className="text-center">
@@ -181,78 +132,41 @@ function QuizPageContent() {
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
         );
     }
 
     return (
-        <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-            {/* Enhanced Header */}
-            <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100/50 shadow-sm sticky top-0 z-40">
-                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Button
-                                variant="outline"
-                                onClick={handleBackToHome}
-                                className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm hover:bg-white transition-all duration-200 h-9 px-3"
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                                <span>Back</span>
-                            </Button>
-                            <div className="hidden md:flex items-center gap-2">
-                                <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-1.5">
-                                    <Award className="w-4 h-4 text-white" />
-                                </div>
-                                <div>
-                                    <h1 className="text-base font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                        {certificationData.name}
-                                    </h1>
-                                    <p className="text-xs text-slate-600">Certification Quiz</p>
-                                </div>
-                            </div>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+            <Header
+                showQuizStats={!!session?.user}
+                quizStats={{
+                    correct: quizStats.sessionScore,
+                    total: quizStats.totalPoints,
+                    currentQuestion: quizStats.currentQuestion,
+                    totalQuestions: quizStats.totalQuestions,
+                    score: Math.round(quizStats.progress)
+                }}
+                customContent={
+                    <div className="hidden sm:flex lg:hidden items-center gap-3 text-xs text-slate-600">
+                        <div className="flex items-center gap-1">
+                            <BookOpen className="w-3 h-3" />
+                            <span>{certificationData.questions_count} Questions</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                            {/* Live Quiz Stats */}
-                            <div className="hidden lg:flex items-center gap-2">
-                                <div className="bg-green-50 border border-green-100 rounded-lg px-2 py-1 text-center">
-                                    <p className="text-xs text-green-600 font-medium">Correct</p>
-                                    <p className="text-sm font-bold text-green-700">{quizStats.sessionScore}</p>
-                                </div>
-                                <div className="bg-purple-50 border border-purple-100 rounded-lg px-2 py-1 text-center">
-                                    <p className="text-xs text-purple-600 font-medium">Points</p>
-                                    <p className="text-sm font-bold text-purple-700">{quizStats.totalPoints}</p>
-                                </div>
-                                <div className="bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 text-center">
-                                    <p className="text-xs text-blue-600 font-medium">Progress</p>
-                                    <p className="text-sm font-bold text-blue-700">{Math.round(quizStats.progress)}%</p>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-center">
-                                    <p className="text-xs text-slate-600 font-medium">Question</p>
-                                    <p className="text-sm font-bold text-slate-700">{quizStats.currentQuestion}/{quizStats.totalQuestions}</p>
-                                </div>
-                            </div>
-                            <div className="hidden sm:flex lg:hidden items-center gap-3 text-xs text-slate-600">
-                                <div className="flex items-center gap-1">
-                                    <BookOpen className="w-3 h-3" />
-                                    <span>{certificationData.questions_count} Questions</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    <span>{certificationData.duration} min</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Target className="w-3 h-3" />
-                                    <span className="capitalize">{certificationData.level}</span>
-                                </div>
-                            </div>
+                        <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>{certificationData.duration} min</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Target className="w-3 h-3" />
+                            <span className="capitalize">{certificationData.level}</span>
                         </div>
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             {/* Main Content Container */}
-            <div className="max-w-[1600px] mx-auto p-4 sm:p-6">
+            <div className="max-w-[1800px] mx-auto p-2 sm:p-4">
                 {/* Certification Info Panel - Mobile */}
                 <div className="md:hidden mb-4">
                     <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-blue-100/50 p-4 shadow-lg">
@@ -293,11 +207,11 @@ function QuizPageContent() {
                         certificationSlug={certificationSlug}
                         certificationId={certificationData.id}
                         initialQuestion={currentQuestion}
-                        onStatsUpdate={setQuizStats}
+                        onStatsUpdate={handleStatsUpdate}
                     />
                 </div>
             </div>
-        </main>
+        </div>
     );
 }
 

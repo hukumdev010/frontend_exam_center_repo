@@ -1,49 +1,53 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  // Development mode configuration for better hot reloading
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      // Enhanced file watching for better hot reload in dev containers
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-        ignored: [
-          '**/node_modules/**',
-          '**/.git/**',
-          '**/.next/**',
-          '**/dist/**',
-          '**/build/**',
-          '**/__pycache__/**',
-          '**/backend/**',
-          '**/*.log',
-          '**/logs/**',
-          '**/tmp/**',
-          '**/temp/**'
-        ],
-      };
-    }
-    return config;
-  },
   // Enable experimental features for better development experience
   experimental: {
     // Enable optimized package imports
     optimizePackageImports: ['lucide-react'],
   },
-  // Configure allowed development origins
+  // Configure CORS and WebSocket origins
   async headers() {
     return [
       {
-        source: '/_next/:path*',
+        source: '/(.*)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
             value: '*',
           },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
         ],
       },
     ];
+  },
+  // Suppress hydration warnings in development
+  reactStrictMode: true,
+  // Configure compiler options to handle hydration better
+  compiler: {
+    // Remove console.logs in production but keep them in dev
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ['error'] } : false,
+  },
+  // Configure logging to suppress hydration warnings from browser extensions
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
+  // Configure dev indicators
+  devIndicators: {
+    position: 'bottom-right',
+  },
+  // Configure environment variables
+  env: {
+    SUPPRESS_HYDRATION_WARNING: process.env.NEXT_PUBLIC_SUPPRESS_HYDRATION_WARNING || 'false',
   },
 };
 

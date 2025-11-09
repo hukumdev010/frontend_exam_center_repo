@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BookOpen, Award, Plus, Info, Target } from "lucide-react";
 import Link from "next/link";
+import { useUserQualifications } from "@/hooks/useApi";
 
 interface Qualification {
     id: number;
@@ -18,32 +19,18 @@ interface Qualification {
     is_teaching: boolean;
 }
 
+interface QualificationsResponse {
+    qualifications: Qualification[];
+}
+
 export default function QualificationsPage() {
-    const [qualifications, setQualifications] = useState<Qualification[]>([]);
-    const [loading, setLoading] = useState(true);
     const [applyingToTeach, setApplyingToTeach] = useState<number | null>(null);
 
-    useEffect(() => {
-        // Fetch user qualifications
-        fetchQualifications();
-    }, []);
-
-    const fetchQualifications = async () => {
-        try {
-            const response = await fetch('/api/users/qualifications');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            setQualifications(data.qualifications || []);
-        } catch (error) {
-            console.error('Error fetching qualifications:', error);
-            // Set empty array if API call fails
-            setQualifications([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Use SWR hook for qualifications data
+    const { data: qualificationsData, isLoading: loading, error, mutate } = useUserQualifications();
+    const qualifications = Array.isArray((qualificationsData as QualificationsResponse)?.qualifications)
+        ? (qualificationsData as QualificationsResponse).qualifications
+        : [];
 
     const applyToTeachSubject = async (certificationId: number) => {
         setApplyingToTeach(certificationId);
@@ -61,7 +48,7 @@ export default function QualificationsPage() {
             }
 
             // Refresh qualifications to update the UI
-            await fetchQualifications();
+            await mutate();
 
             // Show success message (you can add toast notification here)
             console.log('Successfully applied to teach this subject!');
@@ -73,6 +60,10 @@ export default function QualificationsPage() {
             setApplyingToTeach(null);
         }
     };
+
+    if (error) {
+        return <div className="p-6 text-red-600">Error loading qualifications. Please try refreshing the page.</div>;
+    }
 
     if (loading) {
         return <div className="p-6">Loading qualifications...</div>;

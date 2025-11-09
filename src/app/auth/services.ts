@@ -51,6 +51,26 @@ export class AuthService {
         });
     }
 
+    static async loginWithEmailPassword(email: string, password: string): Promise<AuthResponse> {
+        return this.makeRequest(API_ENDPOINTS.auth.login, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password }),
+        });
+    }
+
+    static async registerUser(name: string, email: string, password: string): Promise<{ message: string; user: User }> {
+        return this.makeRequest(API_ENDPOINTS.auth.register, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name, email, password }),
+        });
+    }
+
     static async refreshToken(refreshToken: string): Promise<AuthResponse> {
         return this.makeRequest(`${API_ENDPOINTS.base}/api/auth/refresh`, {
             method: 'POST',

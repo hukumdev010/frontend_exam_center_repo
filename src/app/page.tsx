@@ -1,47 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/useAuth";
-import ProgressDashboard from "@/components/ProgressDashboard";
-import { CategoryBrowser } from "@/components/CategoryBrowser";
-import TeacherList from "@/components/TeacherList";
-import Header from './header';
+import { useState } from "react";
+import { HeroSection, Sidebar, MainContent } from './components';
+import type { FilterState } from './components/Sidebar';
 
 export default function Home() {
-  const router = useRouter();
-  const { data: session } = useSession();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const handleCertificationSelect = async (slug: string) => {
-    router.push(`/quiz/${slug}`);
-  };
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [activeTab, setActiveTab] = useState<'certifications' | 'teachers'>('certifications');
+  const [filters, setFilters] = useState<FilterState>({
+    selectedCategories: [],
+    selectedTeachers: [],
+    searchQuery: ""
+  });
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <Header />
+    <div className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50">
+      <HeroSection />
 
-      <div className="max-w-6xl mx-auto bg-white/90 backdrop-blur-sm rounded-t-3xl shadow-2xl border border-blue-100/50 mt-6">
-        <div className="p-8">
-          {mounted && session && (
-            <div className="mb-8">
-              <ProgressDashboard onContinueQuiz={handleCertificationSelect} />
-            </div>
-          )}
+      {/* Main Layout with Sidebar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/50 overflow-hidden">
+          <div className="flex flex-col lg:flex-row min-h-[600px]">
+            <Sidebar
+              showSidebar={showSidebar}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              onCloseSidebar={() => setShowSidebar(false)}
+              onFiltersChange={setFilters}
+            />
 
-          <CategoryBrowser
-            showSearch={true}
-          />
-
-          <div className="mt-12">
-            <TeacherList />
+            <MainContent
+              activeTab={activeTab}
+              onShowSidebar={() => setShowSidebar(true)}
+              filters={filters}
+            />
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

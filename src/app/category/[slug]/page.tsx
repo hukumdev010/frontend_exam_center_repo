@@ -55,7 +55,7 @@ export default function CategoryPage() {
     };
 
     const handleCertificationClick = (slug: string) => {
-        router.push(`/quiz/${slug}`);
+        router.push(`/quiz/${slug}/info`);
     };
 
     if (loading && !certifications) {
@@ -67,8 +67,8 @@ export default function CategoryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-            <div className="max-w-7xl mx-auto">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-100">
+            <div className="max-w-7xl mx-auto p-6">
                 <CategoryHeader
                     category={category}
                     certifications={certifications}

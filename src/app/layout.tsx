@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import MainLayout from "@/components/layouts/MainLayout";
+import HydrationBoundary from "@/components/HydrationBoundary";
+import SimpleHydrationProtection from "@/components/SimpleHydrationProtection";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +17,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Exam Center - Master Your Certifications",
-  description: "Practice and master certification exams with our comprehensive quiz platform",
+  title: "EduNeps - Learning Platform",
+  description: "Master your certifications with EduNeps comprehensive learning platform",
+  icons: {
+    icon: [
+      {
+        url: '/favicon-16x16.svg',
+        sizes: '16x16',
+        type: 'image/svg+xml',
+      },
+      {
+        url: '/favicon.svg',
+        type: 'image/svg+xml',
+      }
+    ],
+    shortcut: '/favicon-16x16.svg',
+  },
 };
 
 export default function RootLayout({
@@ -28,7 +45,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>{children}</Providers>
+        <SimpleHydrationProtection />
+        <HydrationBoundary>
+          <Providers>
+            <MainLayout>
+              {children}
+            </MainLayout>
+          </Providers>
+        </HydrationBoundary>
       </body>
     </html>
   );

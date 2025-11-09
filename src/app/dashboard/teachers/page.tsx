@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
     Search,
-    Star,
     Clock,
     DollarSign,
     BookOpen,
@@ -17,111 +16,64 @@ import {
     Filter
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTeachers } from "@/hooks/useApi";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface Teacher {
     id: number;
-    name: string;
-    avatar?: string;
-    bio: string;
-    subjects: string[];
-    rating: number;
-    reviews_count: number;
-    hourly_rate: number;
-    experience_years: number;
-    availability_status: 'available' | 'busy' | 'offline';
-    next_available: string;
-    languages: string[];
-    location: string;
-    total_students: number;
-    completed_lessons: number;
+    user_id: string;
+    bio?: string;
+    experience_years?: number;
+    hourly_rate_one_on_one?: number;
+    hourly_rate_group?: number;
+    max_group_size?: number;
+    status: 'pending' | 'approved' | 'rejected' | 'suspended';
+    is_available: boolean;
+    languages_spoken?: string;
+    timezone?: string;
+    created_at: string;
+    updated_at: string;
 }
 
-export default function FindTeachersPage() {
-    const [teachers, setTeachers] = useState<Teacher[]>([]);
-    const [loading, setLoading] = useState(true);
+export default function TeachersPage() {
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
     const [selectedSubject, setSelectedSubject] = useState("all");
     const [sortBy, setSortBy] = useState("rating");
 
-    // Mock data for now - replace with API call
-    useEffect(() => {
-        const mockTeachers: Teacher[] = [
-            {
-                id: 1,
-                name: "Sarah Johnson",
-                bio: "Experienced mathematics teacher with 8+ years of teaching calculus, algebra, and statistics. Passionate about making complex concepts simple.",
-                subjects: ["Mathematics", "Calculus", "Statistics"],
-                rating: 4.9,
-                reviews_count: 127,
-                hourly_rate: 35,
-                experience_years: 8,
-                availability_status: 'available',
-                next_available: "Today at 2:00 PM",
-                languages: ["English", "Spanish"],
-                location: "New York, USA",
-                total_students: 89,
-                completed_lessons: 542
-            },
-            {
-                id: 2,
-                name: "Dr. Ahmed Hassan",
-                bio: "PhD in Computer Science with specialization in algorithms and data structures. Currently working as a senior software engineer.",
-                subjects: ["Computer Science", "Programming", "Algorithms"],
-                rating: 4.8,
-                reviews_count: 94,
-                hourly_rate: 45,
-                experience_years: 12,
-                availability_status: 'busy',
-                next_available: "Tomorrow at 10:00 AM",
-                languages: ["English", "Arabic"],
-                location: "London, UK",
-                total_students: 67,
-                completed_lessons: 389
-            },
-            {
-                id: 3,
-                name: "Maria Rodriguez",
-                bio: "Native Spanish speaker and certified language instructor. Specializes in conversational Spanish and business communication.",
-                subjects: ["Spanish", "Language Arts"],
-                rating: 4.7,
-                reviews_count: 156,
-                hourly_rate: 28,
-                experience_years: 6,
-                availability_status: 'available',
-                next_available: "Today at 4:30 PM",
-                languages: ["Spanish", "English", "Portuguese"],
-                location: "Barcelona, Spain",
-                total_students: 123,
-                completed_lessons: 678
-            }
-        ];
+    // Debounced search with 300ms delay
+    const debouncedSearch = useDebounce((query: string) => {
+        setDebouncedSearchQuery(query);
+    }, 300);
 
-        // Simulate API call
-        setTimeout(() => {
-            setTeachers(mockTeachers);
-            setLoading(false);
-        }, 1000);
-    }, []);
+    // Update debounced search when searchQuery changes
+    useEffect(() => {
+        debouncedSearch(searchQuery);
+    }, [searchQuery, debouncedSearch]);
+
+    // Use SWR hook for teachers data  
+    const { data: teachersData = [], isLoading: loading, error } = useTeachers();
+    const teachers = Array.isArray(teachersData) ? teachersData as Teacher[] : [];
 
     const filteredTeachers = teachers.filter(teacher => {
-        const matchesSearch = teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            teacher.subjects.some(subject =>
-                subject.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        const matchesSubject = !selectedSubject || selectedSubject === "all" || teacher.subjects.includes(selectedSubject);
+        const matchesSearch = teacher.user_id?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+            teacher.bio?.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+        // Note: We don't have subjects field in the API, so we'll just use the search query for now
+        const matchesSubject = selectedSubject === "all" || !selectedSubject;
         return matchesSearch && matchesSubject;
     });
 
     const sortedTeachers = [...filteredTeachers].sort((a, b) => {
         switch (sortBy) {
             case "rating":
-                return b.rating - a.rating;
+                // Since we don't have rating, sort by status (approved first)
+                return a.status === 'approved' ? -1 : 1;
             case "price_low":
-                return a.hourly_rate - b.hourly_rate;
+                return (a.hourly_rate_one_on_one || 0) - (b.hourly_rate_one_on_one || 0);
             case "price_high":
-                return b.hourly_rate - a.hourly_rate;
+                return (b.hourly_rate_one_on_one || 0) - (a.hourly_rate_one_on_one || 0);
             case "experience":
-                return b.experience_years - a.experience_years;
+                return (b.experience_years || 0) - (a.experience_years || 0);
             default:
                 return 0;
         }
@@ -141,20 +93,31 @@ export default function FindTeachersPage() {
     };
 
     const getAllSubjects = () => {
-        const subjects = new Set<string>();
-        teachers.forEach(teacher => {
-            teacher.subjects.forEach(subject => subjects.add(subject));
-        });
-        return Array.from(subjects).sort();
+        // Since we don't have subjects in the API response, return empty array for now
+        // This could be enhanced to fetch categories/certifications separately
+        return [];
     };
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="mb-8 text-center">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Find Teachers</h1>
+                        <div className="text-red-600">Error loading teachers. Please try refreshing the page.</div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Find Teachers</h1>
-                        <p className="text-muted-foreground">
+            <div className="min-h-screen bg-gray-50 p-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="mb-8 text-center">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Find Teachers</h1>
+                        <p className="text-gray-600">
                             Connect with qualified teachers for personalized learning
                         </p>
                     </div>
@@ -253,56 +216,66 @@ export default function FindTeachersPage() {
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center space-x-3">
                                     <Avatar className="h-12 w-12">
-                                        <AvatarImage src={teacher.avatar} />
                                         <AvatarFallback>
-                                            {teacher.name.split(' ').map(n => n[0]).join('')}
+                                            {teacher.user_id.substring(0, 2).toUpperCase()}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <CardTitle className="text-lg">{teacher.name}</CardTitle>
+                                        <CardTitle className="text-lg">{teacher.user_id}</CardTitle>
                                         <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                            <span>{teacher.rating}</span>
-                                            <span>({teacher.reviews_count} reviews)</span>
+                                            <span className="capitalize">{teacher.status}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <Badge className={getAvailabilityColor(teacher.availability_status)}>
-                                    {teacher.availability_status}
+                                <Badge className={getAvailabilityColor(teacher.is_available ? 'available' : 'offline')}>
+                                    {teacher.is_available ? 'Available' : 'Offline'}
                                 </Badge>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <p className="text-sm text-muted-foreground line-clamp-2">
-                                {teacher.bio}
+                                {teacher.bio || 'No bio available'}
                             </p>
 
-                            {/* Subjects */}
-                            <div className="flex flex-wrap gap-1">
-                                {teacher.subjects.map((subject) => (
-                                    <Badge key={subject} variant="secondary" className="text-xs">
-                                        {subject}
-                                    </Badge>
-                                ))}
-                            </div>
+                            {/* Languages */}
+                            {teacher.languages_spoken && (
+                                <div className="flex flex-wrap gap-1">
+                                    {(() => {
+                                        try {
+                                            const languages = JSON.parse(teacher.languages_spoken);
+                                            return Array.isArray(languages) ? languages.map((language: string) => (
+                                                <Badge key={language} variant="secondary" className="text-xs">
+                                                    {language}
+                                                </Badge>
+                                            )) : null;
+                                        } catch {
+                                            return (
+                                                <Badge variant="secondary" className="text-xs">
+                                                    {teacher.languages_spoken}
+                                                </Badge>
+                                            );
+                                        }
+                                    })()}
+                                </div>
+                            )}
 
                             {/* Stats */}
                             <div className="grid grid-cols-2 gap-2 text-sm">
                                 <div className="flex items-center space-x-1">
                                     <DollarSign className="h-3 w-3 text-muted-foreground" />
-                                    <span>${teacher.hourly_rate}/hour</span>
+                                    <span>${teacher.hourly_rate_one_on_one || 0}/hour</span>
                                 </div>
                                 <div className="flex items-center space-x-1">
                                     <BookOpen className="h-3 w-3 text-muted-foreground" />
-                                    <span>{teacher.experience_years} years</span>
+                                    <span>{teacher.experience_years || 0} years</span>
                                 </div>
                                 <div className="flex items-center space-x-1">
                                     <Clock className="h-3 w-3 text-muted-foreground" />
-                                    <span className="text-xs">{teacher.next_available}</span>
+                                    <span className="text-xs">{teacher.timezone || 'No timezone set'}</span>
                                 </div>
                                 <div className="flex items-center space-x-1">
                                     <MapPin className="h-3 w-3 text-muted-foreground" />
-                                    <span className="text-xs truncate">{teacher.location}</span>
+                                    <span className="text-xs truncate">Max {teacher.max_group_size || 0} students</span>
                                 </div>
                             </div>
 

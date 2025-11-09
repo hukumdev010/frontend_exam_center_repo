@@ -1,19 +1,15 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function AuthErrorContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [errorMessage, setErrorMessage] = useState('Authentication failed');
 
-    useEffect(() => {
-        const message = searchParams.get('message');
-        if (message) {
-            setErrorMessage(decodeURIComponent(message));
-        }
-    }, [searchParams]);
+    // Get error message from search params or use default
+    const message = searchParams.get('message');
+    const errorMessage = message ? decodeURIComponent(message) : 'Authentication failed';
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
