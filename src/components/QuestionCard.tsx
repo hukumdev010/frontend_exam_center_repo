@@ -9,7 +9,6 @@ import { Question, Answer } from "../types/quiz";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeRaw from 'rehype-raw';
 import { deterministicShuffle } from "@/lib/shuffle-utils";
 import { safeLocalStorage } from "@/lib/safe-storage";
 
@@ -79,22 +78,20 @@ export function QuestionCard({
         setCorrectAnswerId(null);
         setAttempts(0);
         setIsSubmitting(false);
-    }, [question]);
 
-    // Call onExplanationChange whenever explanation state changes
-    useEffect(() => {
+        // Reset explanation state in parent
         if (onExplanationChange) {
             onExplanationChange({
-                showExplanation,
-                hasSubmitted,
-                isAnswerCorrect,
-                attempts,
+                showExplanation: false,
+                hasSubmitted: false,
+                isAnswerCorrect: false,
+                attempts: 0,
                 maxAttempts,
-                earnedPoints,
+                earnedPoints: 0,
                 explanation: question?.explanation
             });
         }
-    }, [onExplanationChange, showExplanation, hasSubmitted, isAnswerCorrect, attempts, maxAttempts, earnedPoints, question?.explanation]);
+    }, [question, onExplanationChange, maxAttempts]);
 
     // Return loading state if question is not available
     if (!question) {
@@ -199,6 +196,19 @@ export function QuestionCard({
                 setShowExplanation(true);
             }
 
+            // Notify parent of explanation state change
+            if (onExplanationChange) {
+                onExplanationChange({
+                    showExplanation: !!result.explanation,
+                    hasSubmitted: true,
+                    isAnswerCorrect: result.is_correct,
+                    attempts: attempts + 1,
+                    maxAttempts,
+                    earnedPoints: result.points_earned,
+                    explanation: question?.explanation
+                });
+            }
+
             onAnswer(result.is_correct, result.total_points);
             onSubmit(result.is_correct, result.is_correct || attempts >= maxAttempts);
 
@@ -215,6 +225,19 @@ export function QuestionCard({
                 setCorrectAnswerId(correctAnswer.id);
             }
 
+            // Notify parent of error state
+            if (onExplanationChange) {
+                onExplanationChange({
+                    showExplanation: false,
+                    hasSubmitted: true,
+                    isAnswerCorrect: false,
+                    attempts: attempts + 1,
+                    maxAttempts,
+                    earnedPoints: 0,
+                    explanation: question?.explanation
+                });
+            }
+
             onAnswer(false);
             onSubmit(false, attempts >= maxAttempts);
         } finally {
@@ -228,6 +251,19 @@ export function QuestionCard({
         setShowExplanation(false);
         setIsSubmitting(false);
         setCorrectAnswerId(null);
+
+        // Reset explanation state in parent
+        if (onExplanationChange) {
+            onExplanationChange({
+                showExplanation: false,
+                hasSubmitted: false,
+                isAnswerCorrect: false,
+                attempts,
+                maxAttempts,
+                earnedPoints,
+                explanation: question?.explanation
+            });
+        }
     };
 
 
@@ -312,64 +348,87 @@ export function QuestionCard({
                         )}
                     </div>
                     <div className="prose prose-slate max-w-none">
-                        <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeHighlight, rehypeRaw]}
-                            components={{
-                                // Headers
-                                h1: ({ ...props }) => <h1 className="text-2xl font-bold text-slate-900 mb-4" {...props} />,
-                                h2: ({ ...props }) => <h2 className="text-xl font-bold text-slate-900 mb-3" {...props} />,
-                                h3: ({ ...props }) => <h3 className="text-lg font-semibold text-slate-800 mb-2" {...props} />,
-                                h4: ({ ...props }) => <h4 className="text-base font-semibold text-slate-800 mb-2" {...props} />,
+                        {(() => {
+                            try {
+                                // Log the question text for debugging
+                                console.log('Rendering question text:', question.text);
 
-                                // Paragraphs and text
-                                p: ({ ...props }) => <p className="text-slate-700 mb-3 leading-relaxed" {...props} />,
-                                strong: ({ ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
-                                em: ({ ...props }) => <em className="italic text-slate-700" {...props} />,
+                                // Clean the question text to remove any potential problematic content
+                                const cleanText = question.text
+                                    ?.replace(/<t\b[^>]*>.*?<\/t>/gi, '') // Remove <t> tags
+                                    ?.replace(/<t\b[^>]*>/gi, '') // Remove unclosed <t> tags
+                                    ?.replace(/<\/t>/gi, '') // Remove orphaned closing </t> tags
+                                    ?.replace(/\{t\}/g, '') // Remove {t} expressions
+                                    ?.replace(/\{t\([^}]*\)\}/g, '') // Remove {t()} function calls
+                                    ?.replace(/\bt\b/g, '') // Remove standalone 't' that might be treated as JSX
+                                    || '';
 
-                                // Code blocks
-                                pre: ({ ...props }) => (
-                                    <div className="relative">
-                                        <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-sm overflow-x-auto border shadow-lg" {...props} />
-                                    </div>
-                                ),
-                                code: ({ className, children, ...props }) => {
-                                    const isInline = !className;
-                                    if (isInline) {
-                                        return <code className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-sm font-mono" {...props}>{children}</code>;
-                                    }
-                                    return <code className={className} {...props}>{children}</code>;
-                                },
+                                return (
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeHighlight]}
+                                        components={{
+                                            // Headers
+                                            h1: ({ ...props }) => <h1 className="text-2xl font-bold text-slate-900 mb-4" {...props} />,
+                                            h2: ({ ...props }) => <h2 className="text-xl font-bold text-slate-900 mb-3" {...props} />,
+                                            h3: ({ ...props }) => <h3 className="text-lg font-semibold text-slate-800 mb-2" {...props} />,
+                                            h4: ({ ...props }) => <h4 className="text-base font-semibold text-slate-800 mb-2" {...props} />,
 
-                                // Lists
-                                ul: ({ ...props }) => <ul className="list-disc list-inside text-slate-700 mb-3 space-y-1" {...props} />,
-                                ol: ({ ...props }) => <ol className="list-decimal list-inside text-slate-700 mb-3 space-y-1" {...props} />,
-                                li: ({ ...props }) => <li className="text-slate-700" {...props} />,
+                                            // Paragraphs and text
+                                            p: ({ ...props }) => <p className="text-slate-700 mb-3 leading-relaxed" {...props} />,
+                                            strong: ({ ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
+                                            em: ({ ...props }) => <em className="italic text-slate-700" {...props} />,
 
-                                // Tables
-                                table: ({ ...props }) => (
-                                    <div className="overflow-x-auto mb-4">
-                                        <table className="min-w-full border border-slate-200 rounded-lg" {...props} />
-                                    </div>
-                                ),
-                                thead: ({ ...props }) => <thead className="bg-slate-50" {...props} />,
-                                th: ({ ...props }) => <th className="border border-slate-200 px-3 py-2 text-left font-semibold text-slate-900" {...props} />,
-                                td: ({ ...props }) => <td className="border border-slate-200 px-3 py-2 text-slate-700" {...props} />,
+                                            // Code blocks
+                                            pre: ({ ...props }) => (
+                                                <div className="relative">
+                                                    <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-sm overflow-x-auto border shadow-lg" {...props} />
+                                                </div>
+                                            ),
+                                            code: ({ className, children, ...props }) => {
+                                                const isInline = !className;
+                                                if (isInline) {
+                                                    return <code className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-sm font-mono" {...props}>{children}</code>;
+                                                }
+                                                return <code className={className} {...props}>{children}</code>;
+                                            },
 
-                                // Blockquotes
-                                blockquote: ({ ...props }) => (
-                                    <blockquote className="border-l-4 border-blue-400 pl-4 py-2 bg-blue-50 text-blue-900 rounded-r-lg mb-3" {...props} />
-                                ),
+                                            // Lists
+                                            ul: ({ ...props }) => <ul className="list-disc list-inside text-slate-700 mb-3 space-y-1" {...props} />,
+                                            ol: ({ ...props }) => <ol className="list-decimal list-inside text-slate-700 mb-3 space-y-1" {...props} />,
+                                            li: ({ ...props }) => <li className="text-slate-700" {...props} />,
 
-                                // Links
-                                a: ({ ...props }) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />,
+                                            // Tables
+                                            table: ({ ...props }) => (
+                                                <div className="overflow-x-auto mb-4">
+                                                    <table className="min-w-full border border-slate-200 rounded-lg" {...props} />
+                                                </div>
+                                            ),
+                                            thead: ({ ...props }) => <thead className="bg-slate-50" {...props} />,
+                                            th: ({ ...props }) => <th className="border border-slate-200 px-3 py-2 text-left font-semibold text-slate-900" {...props} />,
+                                            td: ({ ...props }) => <td className="border border-slate-200 px-3 py-2 text-slate-700" {...props} />,
 
-                                // Horizontal rule
-                                hr: ({ ...props }) => <hr className="border-slate-300 my-6" {...props} />,
-                            }}
-                        >
-                            {question.text}
-                        </ReactMarkdown>
+                                            // Blockquotes
+                                            blockquote: ({ ...props }) => (
+                                                <blockquote className="border-l-4 border-blue-400 pl-4 py-2 bg-blue-50 text-blue-900 rounded-r-lg mb-3" {...props} />
+                                            ),
+
+                                            // Links
+                                            a: ({ ...props }) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />,
+
+                                            // Horizontal rule
+                                            hr: ({ ...props }) => <hr className="border-slate-300 my-6" {...props} />,
+                                        }}
+                                    >
+                                        {cleanText}
+                                    </ReactMarkdown>
+                                );
+                            } catch (error) {
+                                console.error('Error rendering question text:', error, question.text);
+                                // Fallback to plain text rendering
+                                return <div className="text-slate-700">{question.text}</div>;
+                            }
+                        })()}
                     </div>
                 </div>
 
@@ -397,26 +456,46 @@ export function QuestionCard({
                                     {String.fromCharCode(65 + index)}
                                 </div>
                                 <div className="prose prose-sm max-w-none">
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        rehypePlugins={[rehypeHighlight, rehypeRaw]}
-                                        components={{
-                                            // Keep it simple for answer options
-                                            p: ({ ...props }) => <span className="text-sm font-medium leading-relaxed" {...props} />,
-                                            strong: ({ ...props }) => <strong className="font-bold text-slate-900" {...props} />,
-                                            em: ({ ...props }) => <em className="italic" {...props} />,
-                                            code: ({ ...props }) => <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-xs font-mono" {...props} />,
-                                            // Remove margins for inline elements in answers
-                                            h1: ({ ...props }) => <span className="font-bold text-lg" {...props} />,
-                                            h2: ({ ...props }) => <span className="font-bold text-base" {...props} />,
-                                            h3: ({ ...props }) => <span className="font-bold text-sm" {...props} />,
-                                            ul: ({ ...props }) => <span {...props} />,
-                                            ol: ({ ...props }) => <span {...props} />,
-                                            li: ({ ...props }) => <span {...props} />,
-                                        }}
-                                    >
-                                        {answer.text}
-                                    </ReactMarkdown>
+                                    {(() => {
+                                        try {
+                                            // Clean the answer text to remove any potential problematic content
+                                            const cleanAnswerText = answer.text
+                                                ?.replace(/<t\b[^>]*>.*?<\/t>/gi, '') // Remove <t> tags
+                                                ?.replace(/<t\b[^>]*>/gi, '') // Remove unclosed <t> tags
+                                                ?.replace(/<\/t>/gi, '') // Remove orphaned closing </t> tags
+                                                ?.replace(/\{t\}/g, '') // Remove {t} expressions
+                                                ?.replace(/\{t\([^}]*\)\}/g, '') // Remove {t()} function calls
+                                                ?.replace(/\bt\b/g, '') // Remove standalone 't' that might be treated as JSX
+                                                || '';
+
+                                            return (
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    rehypePlugins={[rehypeHighlight]}
+                                                    components={{
+                                                        // Keep it simple for answer options
+                                                        p: ({ ...props }) => <span className="text-sm font-medium leading-relaxed" {...props} />,
+                                                        strong: ({ ...props }) => <strong className="font-bold text-slate-900" {...props} />,
+                                                        em: ({ ...props }) => <em className="italic" {...props} />,
+                                                        code: ({ ...props }) => <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-xs font-mono" {...props} />,
+                                                        // Remove margins for inline elements in answers
+                                                        h1: ({ ...props }) => <span className="font-bold text-lg" {...props} />,
+                                                        h2: ({ ...props }) => <span className="font-bold text-base" {...props} />,
+                                                        h3: ({ ...props }) => <span className="font-bold text-sm" {...props} />,
+                                                        ul: ({ ...props }) => <span {...props} />,
+                                                        ol: ({ ...props }) => <span {...props} />,
+                                                        li: ({ ...props }) => <span {...props} />,
+                                                    }}
+                                                >
+                                                    {cleanAnswerText}
+                                                </ReactMarkdown>
+                                            );
+                                        } catch (error) {
+                                            console.error('Error rendering answer text:', error, answer.text);
+                                            // Fallback to plain text rendering
+                                            return <span className="text-sm font-medium leading-relaxed">{answer.text}</span>;
+                                        }
+                                    })()}
                                 </div>
                             </div>
 

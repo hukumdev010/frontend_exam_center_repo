@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useAuth";
 import { QuestionCard } from "./QuestionCard";
-import { Button } from "./ui/button";
-import { RotateCcw, Trophy, GraduationCap, X, MessageSquare, Info, ExternalLink } from "lucide-react";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { Question } from "../types/quiz";
-import ReactMarkdown from 'react-markdown';
+import {
+    QuizCompletionScreen,
+    ExplanationPanel,
+    GeminiChat,
+    EmptyQuizState
+} from "@/app/quiz/components";
 // import { CodeEditor } from "./CodeEditor";
 
 
@@ -23,18 +26,22 @@ interface ExamQuizProps {
     onStatsUpdate?: (stats: { sessionScore: number; totalPoints: number; progress: number; currentQuestion: number; totalQuestions: number }) => void;
 }
 
-export function ExamQuiz({ questions, certificationName, certificationSlug, certificationId, initialQuestion = 0, onStatsUpdate }: ExamQuizProps) {
+// Memoized wrapper component to prevent unnecessary re-renders
+export const ExamQuiz = ({ questions, certificationName, certificationSlug, certificationId, initialQuestion = 0, onStatsUpdate }: ExamQuizProps) => {
+    // Memoize the props to prevent unnecessary re-renders of child component
+    const memoizedProps = useMemo(() => ({
+        questions,
+        certificationName,
+        certificationSlug,
+        certificationId,
+        initialQuestion,
+        onStatsUpdate
+    }), [questions, certificationName, certificationSlug, certificationId, initialQuestion, onStatsUpdate]);
+
     return (
-        <ExamQuizContent
-            questions={questions}
-            certificationName={certificationName}
-            certificationSlug={certificationSlug}
-            certificationId={certificationId}
-            initialQuestion={initialQuestion}
-            onStatsUpdate={onStatsUpdate}
-        />
+        <ExamQuizContent {...memoizedProps} />
     );
-}
+};
 
 function ExamQuizContent({ questions, certificationName, certificationSlug, certificationId, initialQuestion = 0, onStatsUpdate }: ExamQuizProps) {
     const router = useRouter();
@@ -161,25 +168,17 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
         return () => clearTimeout(timer);
     }, [currentQuestion]);
 
-    // AI assistant state for full screen
-    const [aiQuestion, setAiQuestion] = useState('');
-    const [aiResponse, setAiResponse] = useState('');
-
     // Simple functions to show/hide AI assistant
-    const showAIFullScreen = (question: string, response?: string) => {
-        setAiQuestion(question);
-        setAiResponse(response || '');
+    const showAIFullScreen = useCallback(() => {
         setShowFullScreenAI(true);
-    };
+    }, []);
 
-    const hideAIFullScreen = () => {
+    const hideAIFullScreen = useCallback(() => {
         setShowFullScreenAI(false);
-        setAiQuestion('');
-        setAiResponse('');
-    };
+    }, []);
 
     // Handle explanation data changes from QuestionCard
-    const handleExplanationChange = (newExplanationData: {
+    const handleExplanationChange = useCallback((newExplanationData: {
         showExplanation: boolean;
         hasSubmitted: boolean;
         isAnswerCorrect: boolean;
@@ -192,9 +191,9 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
             ...newExplanationData,
             explanation: newExplanationData.explanation || ''
         });
-    };
+    }, []); // No dependencies needed since we're just calling setExplanationData with the received data
 
-    const saveQuizAttempt = async () => {
+    const saveQuizAttempt = useCallback(async () => {
         if (!session?.user?.id || !certificationId) return;
 
         try {
@@ -216,10 +215,10 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
         } catch (error) {
             console.error('Failed to save quiz attempt:', error);
         }
-    };
+    }, [session?.user?.id, certificationId, score, questions.length, totalPoints]);
 
     // Save state to localStorage for non-authenticated users
-    const saveLocalState = (newScore: number, newAnsweredQuestions: Set<number>, newIsCompleted: boolean, newTotalPoints: number) => {
+    const saveLocalState = useCallback((newScore: number, newAnsweredQuestions: Set<number>, newIsCompleted: boolean, newTotalPoints: number) => {
         if (certificationSlug && !session?.user?.id) {
             localStorage.setItem(`quiz-${certificationSlug}`, JSON.stringify({
                 score: newScore,
@@ -228,10 +227,10 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
                 totalPoints: newTotalPoints
             }));
         }
-    };
+    }, [certificationSlug, session?.user?.id]);
 
     // Save progress to API for authenticated users
-    const saveProgress = async (questionIndex: number, correctAnswers: number, points: number, completed: boolean) => {
+    const saveProgress = useCallback(async (questionIndex: number, correctAnswers: number, points: number, completed: boolean) => {
         if (session?.user?.id && certificationId) {
             try {
                 const token = localStorage.getItem('auth_token') || 'mock_token';
@@ -255,12 +254,12 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
                 console.error('Failed to save user progress:', error);
             }
         }
-    };
+    }, [session?.user?.id, certificationId]);
 
     const correctAnswers = score;
     const totalQuestions = questions.length;
 
-    const handleAnswer = (isCorrect: boolean, totalPointsFromBackend?: number) => {
+    const handleAnswer = useCallback((isCorrect: boolean, totalPointsFromBackend?: number) => {
         if (answeredQuestions.has(currentQuestion)) return;
 
         const newAnsweredQuestions = new Set(answeredQuestions).add(currentQuestion);
@@ -283,13 +282,13 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
         const updatedTotalPoints = totalPointsFromBackend !== undefined ? totalPointsFromBackend : totalPoints;
         saveLocalState(newScore, newAnsweredQuestions, isCompleted, updatedTotalPoints);
         // Don't save progress here since the verify-answer API handles it
-    };
+    }, [answeredQuestions, currentQuestion, score, totalPoints, isCompleted, saveLocalState]);
 
-    const handleSubmit = (isCorrect: boolean, canProceed: boolean) => {
+    const handleSubmit = useCallback((isCorrect: boolean, canProceed: boolean) => {
         setCanProceed(canProceed);
-    };
+    }, []);
 
-    const handleNext = () => {
+    const handleNext = useCallback(() => {
         if (!canProceed) return; // Only proceed if current question is correct
 
         if (currentQuestion < questions.length - 1) {
@@ -305,18 +304,18 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
             saveProgress(currentQuestion, score, totalPoints, newIsCompleted);
             saveQuizAttempt();
         }
-    };
+    }, [canProceed, currentQuestion, questions.length, updateURL, saveProgress, score, totalPoints, saveLocalState, answeredQuestions, saveQuizAttempt]);
 
-    const handlePrevious = () => {
+    const handlePrevious = useCallback(() => {
         if (currentQuestion > 0) {
             const prevQuestion = currentQuestion - 1;
             setCurrentQuestion(prevQuestion);
             updateURL(prevQuestion);
             saveProgress(prevQuestion, score, totalPoints, false);
         }
-    };
+    }, [currentQuestion, updateURL, saveProgress, score, totalPoints]);
 
-    const handleRestart = () => {
+    const handleRestart = useCallback(() => {
         setCurrentQuestion(0);
         setScore(0);
         setSessionScore(0); // Reset session score
@@ -335,170 +334,46 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
 
         // Reset progress in database (restart from first question)
         saveProgress(0, 0, 0, false);
-    };
+    }, [certificationSlug, session?.user?.id, updateURL, saveProgress]);
 
-    const getScoreColor = () => {
-        const percentage = (correctAnswers / totalQuestions) * 100;
-        if (percentage >= 80) return "text-green-600";
-        if (percentage >= 60) return "text-yellow-600";
-        return "text-red-600";
-    };
+    // Memoized handlers to prevent unnecessary re-renders of child components
+    const handleShowAIFullScreen = useCallback(() => {
+        showAIFullScreen();
+    }, [showAIFullScreen]);
 
-    const handleBackHome = () => {
-        router.push('/');
-    };
+    const handleHideAIFullScreen = useCallback(() => {
+        hideAIFullScreen();
+    }, [hideAIFullScreen]);
+
+    // Memoized current question object to prevent unnecessary re-renders
+    const currentQuestionObject = useMemo(() =>
+        questions && questions.length > 0 && currentQuestion < questions.length
+            ? questions[currentQuestion]
+            : null,
+        [questions, currentQuestion]
+    );
 
     if (isCompleted) {
         return (
-            <div className="flex flex-col lg:flex-row min-h-screen">
-                {/* Left side - Completion screen */}
-                <div className="flex-1 p-4 lg:p-6">
-                    <div className="max-w-4xl mx-auto">
-                        <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl p-6 lg:p-10 shadow-lg text-center">
-                            <div className="mb-6">
-                                <div className="bg-yellow-100 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-4">
-                                    <Trophy className="w-10 h-10 text-yellow-600" />
-                                </div>
-                                <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-2">🎉 Quiz Completed!</h2>
-                                <p className="text-lg text-slate-700 mb-6">{certificationName}</p>
-                            </div>
-
-                            {/* Results Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
-                                    <div className="text-3xl font-bold mb-2">
-                                        <span className={getScoreColor()}>
-                                            {correctAnswers}/{totalQuestions}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-slate-600 font-medium">Questions Correct</p>
-                                </div>
-                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
-                                    <div className="text-3xl font-bold mb-2">
-                                        <span className={getScoreColor()}>
-                                            {Math.round((correctAnswers / totalQuestions) * 100)}%
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-slate-600 font-medium">Score Percentage</p>
-                                </div>
-                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
-                                    <div className="text-3xl font-bold mb-2 text-purple-600">
-                                        {totalPoints}
-                                    </div>
-                                    <p className="text-sm text-slate-600 font-medium">Total Points</p>
-                                </div>
-                            </div>
-
-                            {/* Performance Message */}
-                            <div className="mb-8">
-                                {((correctAnswers / totalQuestions) * 100) >= 80 ? (
-                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                        <p className="text-green-800 font-semibold">🌟 Excellent Performance!</p>
-                                        <p className="text-green-700 text-sm mt-1">You have a strong understanding of this topic.</p>
-                                    </div>
-                                ) : ((correctAnswers / totalQuestions) * 100) >= 60 ? (
-                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                        <p className="text-yellow-800 font-semibold">👍 Good Work!</p>
-                                        <p className="text-yellow-700 text-sm mt-1">You&apos;re on the right track. Review the concepts you missed.</p>
-                                    </div>
-                                ) : (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                        <p className="text-blue-800 font-semibold">📚 Keep Learning!</p>
-                                        <p className="text-blue-700 text-sm mt-1">Practice makes perfect. Review the material and try again.</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <Button
-                                    onClick={handleRestart}
-                                    variant="outline"
-                                    className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 border-slate-200"
-                                >
-                                    <RotateCcw className="w-4 h-4" />
-                                    Restart Quiz
-                                </Button>
-                                <Button
-                                    onClick={handleBackHome}
-                                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
-                                >
-                                    Back to Home
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right side - Explanation Panel */}
-                <div className="w-full lg:w-[600px] border-t lg:border-t-0 lg:border-l border-slate-200/50 bg-gradient-to-b from-blue-50/50 to-purple-50/50 flex-shrink-0">
-                    <div className="sticky top-0 h-96 lg:h-screen flex flex-col">
-                        <div className="p-6 border-b border-slate-200/50 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 rounded-lg p-2">
-                                        <GraduationCap className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-lg">Quiz Complete!</h3>
-                                        <p className="text-sm text-blue-100">Review & Learn More</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <p className="text-sm text-blue-100 mt-2">
-                                Quiz completed! Great job on finishing all questions.
-                            </p>
-                        </div>
-
-                        <div className="flex-1 p-6 overflow-y-auto">
-                            <div className="text-center text-slate-500 mt-20">
-                                <GraduationCap className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-                                <p className="text-lg font-medium mb-2">Quiz Complete!</p>
-                                <p className="text-sm mb-4">
-                                    Review your answers or start a new quiz.
-                                </p>
-                                <Button
-                                    onClick={() => setShowFullScreenAI(true)}
-                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                                >
-                                    <MessageSquare className="w-4 h-4 mr-2" />
-                                    Chat with AI
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+            <QuizCompletionScreen
+                certificationName={certificationName}
+                correctAnswers={correctAnswers}
+                totalQuestions={totalQuestions}
+                totalPoints={totalPoints}
+                onRestart={handleRestart}
+                onShowAI={() => setShowFullScreenAI(true)}
+            />
         );
     }
 
-    // Guard against empty questions array or invalid current question index
+    // Use the EmptyQuizState component for empty states
     if (!questions || questions.length === 0 || currentQuestion >= questions.length) {
         return (
-            <div className="p-4 lg:p-6">
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-6 lg:p-10 shadow-lg text-center">
-                        <div className="text-slate-400 text-6xl mb-6">📚</div>
-                        <h3 className="text-xl lg:text-2xl font-bold text-slate-900 mb-4">
-                            {!questions || questions.length === 0
-                                ? "No Questions Available"
-                                : "Question Not Found"}
-                        </h3>
-                        <p className="text-slate-600 mb-8">
-                            {!questions || questions.length === 0
-                                ? "This certification doesn't have any questions yet. Please check back later or contact support."
-                                : "The requested question could not be found. Please try reloading the page."}
-                        </p>
-                        <Button
-                            onClick={handleBackHome}
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
-                        >
-                            Back to Home
-                        </Button>
-                    </div>
-                </div>
-            </div>
+            <EmptyQuizState
+                questions={questions}
+                questionsLength={questions?.length || 0}
+                currentQuestion={currentQuestion}
+            />
         );
     }
 
@@ -513,7 +388,7 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
                         {/* Question Card */}
                         <div className="mb-6">
                             <QuestionCard
-                                question={questions[currentQuestion]}
+                                question={currentQuestionObject!}
                                 onAnswer={handleAnswer}
                                 onSubmit={handleSubmit}
                                 onNext={handleNext}
@@ -529,159 +404,30 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
                 </div>
 
                 {/* Right side - Explanation Panel */}
-                <div className="w-full lg:w-[600px] border-t lg:border-t-0 lg:border-l border-slate-200/50 bg-gradient-to-b from-blue-50/50 to-purple-50/50 flex-shrink-0">
-                    <div className="sticky top-0 h-96 lg:h-screen flex flex-col">
-                        {/* Header */}
-                        <div className="p-6 border-b border-slate-200/50 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 rounded-lg p-2">
-                                        <GraduationCap className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-lg">Study Panel</h3>
-                                        <p className="text-sm text-blue-100">Question explanations & AI help</p>
-                                    </div>
-                                </div>
-                                <Button
-                                    onClick={() => showAIFullScreen(questions[currentQuestion]?.text || "", "Ask me anything about this question!")}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-white hover:bg-white/20 px-3 py-1.5 text-xs"
-                                >
-                                    <MessageSquare className="w-4 h-4 mr-1" />
-                                    Chat with AI
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Content Area */}
-                        <div className="flex-1 p-4 overflow-y-auto">
-                            {explanationData.showExplanation && explanationData.explanation && explanationData.hasSubmitted && (explanationData.isAnswerCorrect || explanationData.attempts >= explanationData.maxAttempts) ? (
-                                <div className="space-y-4 h-[50vh] lg:h-[70vh]">
-                                    {/* Explanation Content */}
-                                    <div className="bg-white rounded-xl p-4 border border-blue-200 shadow-sm h-full overflow-y-auto">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center">
-                                                <Info className="w-3 h-3 text-white" />
-                                            </div>
-                                            <h4 className="text-lg font-bold text-blue-900">Explanation</h4>
-                                        </div>
-
-                                        <div className="prose prose-sm max-w-none">
-                                            <ReactMarkdown
-                                                components={{
-                                                    p: ({ ...props }) => <p className="mb-3 text-slate-700 leading-relaxed" {...props} />,
-                                                    ul: ({ ...props }) => <ul className="list-disc ml-6 mb-3 space-y-1 text-slate-700" {...props} />,
-                                                    ol: ({ ...props }) => <ol className="list-decimal ml-6 mb-3 space-y-1 text-slate-700" {...props} />,
-                                                    li: ({ ...props }) => <li className="text-slate-700" {...props} />,
-                                                    strong: ({ ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
-                                                    code: ({ ...props }) => <code className="bg-slate-100 px-2 py-1 rounded text-sm font-mono text-slate-800" {...props} />,
-                                                }}
-                                            >
-                                                {explanationData.explanation}
-                                            </ReactMarkdown>
-                                        </div>
-
-                                        {/* Reference Link if available */}
-                                        {questions[currentQuestion]?.reference && (
-                                            <div className="mt-4 pt-4 border-t border-blue-200">
-                                                <a
-                                                    href={questions[currentQuestion].reference}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 rounded-lg border border-blue-200 transition-all duration-300 hover:shadow-md font-medium text-sm"
-                                                >
-                                                    <ExternalLink className="w-4 h-4" />
-                                                    Learn more
-                                                </a>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="h-full flex flex-col justify-center items-center text-center text-slate-500">
-                                    <GraduationCap className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-                                    <p className="text-lg font-medium mb-2">Explanation Panel</p>
-                                    <p className="text-sm mb-4">
-                                        Answer the question to see the explanation here.
-                                    </p>
-                                    <p className="text-xs text-slate-400">
-                                        Use the Chat with AI button above for immediate help.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <ExplanationPanel
+                    explanationData={explanationData}
+                    currentQuestion={currentQuestionObject || {}}
+                    onShowAI={handleShowAIFullScreen}
+                />
             </div>
 
-            {/* Compact Full Screen AI Assistant Modal */}
+            {/* AI Chat Modal */}
             {showFullScreenAI && (
                 <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                     <div className="h-[80vh] w-full max-w-6xl mx-4 bg-white flex flex-col rounded-lg shadow-xl">
-                        {/* Sticky Minimal Header */}
-                        <div className="sticky top-0 z-10 flex items-center justify-between p-3 border-b border-slate-200 bg-white shadow-sm flex-shrink-0 rounded-t-lg">
-                            <div className="flex items-center gap-2">
-                                <GraduationCap className="w-5 h-5 text-purple-600" />
-                                <h2 className="text-lg font-semibold text-slate-900">AI Study Assistant</h2>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={hideAIFullScreen}
-                                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 h-8 w-8 p-0 rounded-md"
-                                title="Close"
-                            >
-                                <X className="w-4 h-4" />
-                            </Button>
-                        </div>
-
-                        {/* Maximized Content Area */}
-                        <div className="flex-1 p-4 overflow-y-auto bg-slate-50 min-h-0">
-                            <div className="max-w-5xl mx-auto space-y-4">
-                                {/* Compact Question */}
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                                    <h4 className="font-medium text-slate-800 mb-2 text-sm uppercase tracking-wide">Question:</h4>
-                                    <div className="text-slate-700 text-base">{aiQuestion}</div>
-                                </div>
-
-                                {/* AI Response - Maximum Space */}
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex-1">
-                                    <h4 className="font-medium text-slate-800 mb-2 text-sm uppercase tracking-wide">AI Explanation:</h4>
-                                    <div className="prose prose-sm max-w-none text-slate-700">
-                                        {aiResponse === "Loading AI assistance..." ? (
-                                            <div className="flex items-center gap-3">
-                                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-600 border-t-transparent"></div>
-                                                <span>Getting AI explanation...</span>
-                                            </div>
-                                        ) : (
-                                            <ReactMarkdown
-                                                components={{
-                                                    // Custom styling for markdown elements
-                                                    h1: ({ ...props }) => <h1 className="text-xl font-bold mb-3 text-slate-900" {...props} />,
-                                                    h2: ({ ...props }) => <h2 className="text-lg font-semibold mb-2 text-slate-800" {...props} />,
-                                                    h3: ({ ...props }) => <h3 className="text-base font-semibold mb-2 text-slate-800" {...props} />,
-                                                    p: ({ ...props }) => <p className="mb-3 text-slate-700 leading-relaxed" {...props} />,
-                                                    ul: ({ ...props }) => <ul className="list-disc ml-6 mb-3 space-y-1 text-slate-700" {...props} />,
-                                                    ol: ({ ...props }) => <ol className="list-decimal ml-6 mb-3 space-y-1 text-slate-700" {...props} />,
-                                                    li: ({ ...props }) => <li className="text-slate-700" {...props} />,
-                                                    code: ({ ...props }) => <code className="bg-slate-100 px-2 py-1 rounded text-sm font-mono text-slate-800" {...props} />,
-                                                    pre: ({ ...props }) => <pre className="bg-slate-100 p-4 rounded-lg text-sm overflow-x-auto mb-3 border" {...props} />,
-                                                    blockquote: ({ ...props }) => <blockquote className="border-l-4 border-purple-300 pl-4 italic text-slate-600 mb-3 bg-purple-50 py-2 rounded-r" {...props} />,
-                                                    strong: ({ ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
-                                                    em: ({ ...props }) => <em className="italic text-slate-700" {...props} />,
-                                                    a: ({ ...props }) => <a className="text-purple-600 hover:text-purple-800 underline" {...props} />,
-                                                    hr: ({ ...props }) => <hr className="my-6 border-slate-200" {...props} />
-                                                }}
-                                            >
-                                                {aiResponse || ""}
-                                            </ReactMarkdown>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <GeminiChat
+                            currentQuestion={currentQuestionObject?.text}
+                            context={certificationName}
+                            className="h-full"
+                        />
+                        {/* Close button overlay */}
+                        <button
+                            onClick={handleHideAIFullScreen}
+                            className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 rounded-lg p-2 text-white transition-colors"
+                            title="Close"
+                        >
+                            ✕
+                        </button>
                     </div>
                 </div>
             )}
