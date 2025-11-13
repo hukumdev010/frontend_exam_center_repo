@@ -28,6 +28,7 @@ interface ExamQuizProps {
 
 // Memoized wrapper component to prevent unnecessary re-renders
 export const ExamQuiz = ({ questions, certificationName, certificationSlug, certificationId, initialQuestion = 0, onStatsUpdate }: ExamQuizProps) => {
+    console.log('🔄 ExamQuiz wrapper component rendering');
     // Memoize the props to prevent unnecessary re-renders of child component
     const memoizedProps = useMemo(() => ({
         questions,
@@ -44,6 +45,7 @@ export const ExamQuiz = ({ questions, certificationName, certificationSlug, cert
 };
 
 function ExamQuizContent({ questions, certificationName, certificationSlug, certificationId, initialQuestion = 0, onStatsUpdate }: ExamQuizProps) {
+    console.log('🔄 ExamQuizContent component rendering');
     const router = useRouter();
     const { data: session } = useSession();
     // Remove unused AI assistant context

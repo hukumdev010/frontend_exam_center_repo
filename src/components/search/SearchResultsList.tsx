@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Users, BookOpen, ChevronRight, User, Star } from "lucide-react";
+import { Users, BookOpen, ChevronRight, Star } from "lucide-react";
 import { SearchResponse, TeacherSearchResponse, SearchTab } from "@/types/category-browser";
 import { useRouter } from "next/navigation";
 
@@ -151,34 +151,40 @@ export function SearchResultsList({
 
             {/* Certification Results */}
             {hasResults() && activeTab === "certifications" && searchResults && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6">
                     {searchResults.certifications.map((cert) => (
                         <div
                             key={cert.id}
-                            className="group bg-gradient-to-br from-white to-blue-50/50 rounded-xl border border-blue-200/50 p-4 
+                            className="group bg-gradient-to-br from-white to-blue-50/50 rounded-xl border border-blue-200/50 p-6 
                                      shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer 
-                                     hover:scale-105 transform hover:border-blue-300"
+                                     hover:scale-105 transform hover:border-blue-300 min-h-[280px] flex flex-col"
                             onClick={() => handleCertificationClick(cert.slug)}
                         >
-                            <div className="flex items-start mb-3">
+                            <div className="flex items-start mb-4">
                                 <div className="flex items-center gap-3 flex-1">
-                                    <div className="relative">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl 
+                                    <div className="relative flex-shrink-0">
+                                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl 
                                                       flex items-center justify-center text-white">
-                                            <BookOpen className="w-5 h-5" />
+                                            <BookOpen className="w-6 h-6" />
                                         </div>
-                                        <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full 
+                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full 
                                                       flex items-center justify-center">
-                                            <Star className="w-2.5 h-2.5 text-white fill-current" />
+                                            <Star className="w-3 h-3 text-white fill-current" />
                                         </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 
-                                                     transition-colors duration-300 line-clamp-1">
+                                        <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 
+                                                     transition-colors duration-300 leading-tight break-words"
+                                            style={{
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'visible'
+                                            }}>
                                             {cert.name}
                                         </h3>
                                         {cert.category && (
-                                            <p className="text-xs text-gray-500 line-clamp-1">
+                                            <p className="text-sm text-blue-600 font-medium mt-1 break-words">
                                                 {cert.category.name}
                                             </p>
                                         )}
@@ -186,21 +192,36 @@ export function SearchResultsList({
                                 </div>
                             </div>
 
-                            <div className="space-y-2 mb-3">
+                            <div className="flex-1 space-y-3 mb-4">
                                 {cert.description && (
-                                    <p className="text-xs text-gray-600 line-clamp-2">
+                                    <p className="text-sm text-gray-600 leading-relaxed break-words"
+                                        style={{
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 3,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden'
+                                        }}>
                                         {cert.description}
                                     </p>
                                 )}
                             </div>
 
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                                    {cert.level}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                    {cert.questions_count} questions
-                                </span>
+                            <div className="space-y-3 mt-auto">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-medium">
+                                        {cert.level}
+                                    </span>
+                                    <span className="text-sm text-gray-600 font-medium">
+                                        {cert.questions_count} questions
+                                    </span>
+                                </div>
+                                {cert.duration && (
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+                                        <span className="text-sm text-gray-700 font-medium">
+                                            🕒 {cert.duration} minutes
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -209,31 +230,37 @@ export function SearchResultsList({
 
             {/* Teacher Results */}
             {hasResults() && activeTab === "teachers" && teacherResults && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6">
                     {teacherResults.teachers.map((teacher) => (
                         <div
                             key={teacher.id}
-                            className="group bg-gradient-to-br from-white to-green-50/50 rounded-xl border border-green-200/50 p-4 
+                            className="group bg-gradient-to-br from-white to-green-50/50 rounded-xl border border-green-200/50 p-6 
                                      shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer 
-                                     hover:scale-105 transform hover:border-green-300"
+                                     hover:scale-105 transform hover:border-green-300 min-h-[280px] flex flex-col"
                             onClick={() => handleTeacherClick(teacher.id)}
                         >
-                            <div className="flex items-start mb-3">
+                            <div className="flex items-start mb-4">
                                 <div className="flex items-center gap-3 flex-1">
-                                    <div className="relative">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full 
-                                                      flex items-center justify-center text-white">
-                                            <User className="w-5 h-5" />
+                                    <div className="relative shrink-0">
+                                        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full 
+                                                      flex items-center justify-center text-white font-bold text-lg">
+                                            {(teacher.user_name || teacher.user_email)?.charAt(0).toUpperCase()}
                                         </div>
-                                        <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full"></div>
+                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-sm font-semibold text-gray-900 group-hover:text-green-600 
-                                                     transition-colors duration-300 line-clamp-1">
+                                        <h3 className="text-base font-semibold text-gray-900 group-hover:text-green-600 
+                                                     transition-colors duration-300 leading-tight break-words"
+                                            style={{
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'visible'
+                                            }}>
                                             {teacher.user_name || "Anonymous Teacher"}
                                         </h3>
                                         {teacher.user_email && (
-                                            <p className="text-xs text-gray-500 line-clamp-1">
+                                            <p className="text-sm text-green-600 font-medium mt-1 break-words">
                                                 {teacher.user_email}
                                             </p>
                                         )}
@@ -241,22 +268,44 @@ export function SearchResultsList({
                                 </div>
                             </div>
 
-                            <div className="space-y-2 mb-3">
+                            <div className="flex-1 space-y-3 mb-4">
                                 {teacher.bio && (
-                                    <p className="text-xs text-gray-600 line-clamp-2">
+                                    <p className="text-sm text-gray-600 leading-relaxed break-words"
+                                        style={{
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 3,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden'
+                                        }}>
                                         {teacher.bio}
                                     </p>
                                 )}
+                                <div className="flex items-center space-x-2">
+                                    <Users className="w-4 h-4 text-green-500" />
+                                    <span className="text-sm text-gray-600">Professional Teacher</span>
+                                </div>
                             </div>
 
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-                                    {teacher.experience_years}+ years
-                                </span>
-                                {teacher.hourly_rate_one_on_one && (
-                                    <span className="text-xs text-gray-500">
-                                        ${teacher.hourly_rate_one_on_one}/hr
+                            <div className="space-y-3 mt-auto">
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-sm px-3 py-1.5 rounded-full font-medium ${teacher.is_available
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-gray-100 text-gray-700'
+                                        }`}>
+                                        {teacher.is_available ? '✓ Available' : '○ Busy'}
                                     </span>
+                                    {teacher.experience_years && (
+                                        <span className="text-sm text-gray-600">
+                                            {teacher.experience_years}+ years
+                                        </span>
+                                    )}
+                                </div>
+                                {teacher.hourly_rate_one_on_one && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                                        <span className="text-sm text-green-700 font-medium">
+                                            💰 ${teacher.hourly_rate_one_on_one}/hour
+                                        </span>
+                                    </div>
                                 )}
                             </div>
                         </div>

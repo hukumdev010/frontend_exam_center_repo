@@ -11,23 +11,29 @@ export function CertificationCard({ certification: cert, onClick }: Certificatio
         <div
             className="group bg-gradient-to-br from-white to-indigo-50/30 rounded-2xl border border-indigo-100/50 p-6 
                      shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer 
-                     hover:scale-105 transform hover:border-indigo-200"
+                     hover:scale-105 transform hover:border-indigo-200 min-h-[320px] flex flex-col"
             onClick={() => onClick(cert.slug)}
         >
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start space-x-3 flex-1">
                     <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl 
-                                  flex items-center justify-center text-white">
+                                  flex items-center justify-center text-white shrink-0">
                         <BookOpen className="w-6 h-6" />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 
-                                     transition-colors duration-300 line-clamp-2 leading-tight">
+                                     transition-colors duration-300 leading-tight break-words"
+                            style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'visible'
+                            }}>
                             {cert.name}
                         </h3>
                         {cert.category && (
                             <div className="flex items-center space-x-1 mt-1">
-                                <span className="text-xs text-indigo-600 font-medium">
+                                <span className="text-sm text-indigo-600 font-medium break-words">
                                     {cert.category.name}
                                 </span>
                             </div>
@@ -35,18 +41,26 @@ export function CertificationCard({ certification: cert, onClick }: Certificatio
                     </div>
                 </div>
                 <span className="text-xs bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 
-                               px-3 py-1.5 rounded-full font-medium border border-indigo-200 flex-shrink-0">
+                               px-3 py-1.5 rounded-full font-medium border border-indigo-200 shrink-0">
                     {cert.level}
                 </span>
             </div>
 
-            {cert.description && (
-                <p className="text-sm text-slate-600 mb-4 line-clamp-2 leading-relaxed">
-                    {cert.description}
-                </p>
-            )}
+            <div className="flex-1 mb-4">
+                {cert.description && (
+                    <p className="text-sm text-slate-600 leading-relaxed break-words"
+                        style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                        }}>
+                        {cert.description}
+                    </p>
+                )}
+            </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 mt-auto">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center">
                         <div className="text-2xl font-bold text-indigo-600">{cert.questions_count}</div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { authService, AuthState, User } from './auth'
 
 export function useAuth() {
+  console.log('🔄 useAuth hook called');
   // Initialize with loading state to avoid hydration mismatch
   const [authState, setAuthState] = useState<AuthState>(() => ({
     user: null,
@@ -43,6 +44,7 @@ export function useAuth() {
 
 // For backward compatibility with existing code
 export function useSession() {
+  console.log('🔄 useSession hook called');
   const auth = useAuth()
   
   return {

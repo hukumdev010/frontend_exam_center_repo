@@ -50,8 +50,8 @@ export function QuestionCard({
     isLastQuestion = false,
     onExplanationChange
 }: QuestionCardProps) {
+    console.log('🔄 QuestionCard component rendering');
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-    const [showExplanation, setShowExplanation] = useState(false);
     const [hasSubmitted, setHasSubmitted] = useState(false);
     const [earnedPoints, setEarnedPoints] = useState(0);
     const [isAnswerCorrect, setIsAnswerCorrect] = useState(false);
@@ -71,7 +71,6 @@ export function QuestionCard({
         setRandomizedAnswers(deterministicShuffle(question.answers, seedString));
 
         setSelectedAnswer(null);
-        setShowExplanation(false);
         setHasSubmitted(false);
         setEarnedPoints(0);
         setIsAnswerCorrect(false);
@@ -193,7 +192,7 @@ export function QuestionCard({
 
             // Show explanation regardless of correctness
             if (result.explanation) {
-                setShowExplanation(true);
+                // Note: showExplanation is managed by parent component
             }
 
             // Notify parent of explanation state change
@@ -248,7 +247,6 @@ export function QuestionCard({
     const handleTryAgain = () => {
         setHasSubmitted(false);
         setSelectedAnswer(null);
-        setShowExplanation(false);
         setIsSubmitting(false);
         setCorrectAnswerId(null);
 

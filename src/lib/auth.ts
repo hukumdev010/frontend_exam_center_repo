@@ -248,6 +248,11 @@ class AuthService {
           console.warn('Logout endpoint failed:', error)
         }
       }
+      
+      // Redirect to home page after logout
+      if (typeof window !== 'undefined') {
+        window.location.href = '/'
+      }
     } catch (error) {
       console.error('Sign out failed:', error)
     }

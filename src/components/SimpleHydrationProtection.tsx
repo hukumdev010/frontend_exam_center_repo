@@ -74,7 +74,7 @@ export default function SimpleHydrationProtection() {
                     document.body || document.documentElement,
                     NodeFilter.SHOW_ELEMENT,
                     {
-                        acceptNode: function (node) {
+                        acceptNode: function () {
                             return NodeFilter.FILTER_ACCEPT;
                         }
                     }

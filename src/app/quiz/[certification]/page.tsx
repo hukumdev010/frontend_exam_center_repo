@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import { useCertificationQuizData } from "@/hooks/useApi";
 
 function QuizPageContent() {
+    console.log('🔄 QuizPageContent component rendering');
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -29,7 +30,7 @@ function QuizPageContent() {
     const urlQuestionParam = parseInt(searchParams.get('q') || '1');
     const currentQuestion = Math.max(0, urlQuestionParam - 1);
 
-    // Use SWR hook for quiz data fetching only
+    // Use SWR hook for quiz data fetching
     const { data: certificationData, isLoading: loading, error } = useCertificationQuizData(certificationSlug);
 
     const handleBackToHome = () => {
@@ -87,7 +88,7 @@ function QuizPageContent() {
                             <div className="bg-red-50 border border-red-200 rounded-xl p-6">
                                 <div className="text-red-600 text-4xl mb-4">⚠️</div>
                                 <h3 className="text-lg font-semibold text-red-900 mb-2">Oops! Something went wrong</h3>
-                                <p className="text-red-700 mb-6">{error.message || 'An error occurred while loading the quiz.'}</p>
+                                <p className="text-red-700 mb-6">{error?.message || 'An error occurred while loading the quiz.'}</p>
                                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                     <Button
                                         onClick={() => window.location.reload()}
@@ -216,6 +217,7 @@ function QuizPageContent() {
 }
 
 export default function QuizPage() {
+    console.log('🔄 QuizPage component rendering');
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">

@@ -22,6 +22,7 @@ const QuizCompletionScreen = memo(function QuizCompletionScreen({
     onRestart,
     onShowAI
 }: QuizCompletionScreenProps) {
+    console.log('🔄 QuizCompletionScreen component rendering');
     const router = useRouter();
 
     const getScoreColor = () => {

@@ -184,7 +184,7 @@ export function useCertificationInfo(slug: string) {
   const { data } = useSession()
   
   return useSWR<CertificationInfo>(
-    slug && data ? `${API_ENDPOINTS.certification.info(slug)}-${data.user?.id || 'anonymous'}` : null,
+    slug ? `${API_ENDPOINTS.certification.info(slug)}-${data?.user?.id || 'anonymous'}` : null,
     () => {
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -212,6 +212,7 @@ export function useCertificationInfo(slug: string) {
 }
 
 export function useCertificationQuizData(slug: string) {
+  console.log('🔄 useCertificationQuizData hook called with slug:', slug);
   return useSWR<QuizCertification>(
     slug ? API_ENDPOINTS.certifications(slug) : null
   )
@@ -495,4 +496,28 @@ export function useLearningStats() {
     isLoading: false,
     error: null
   };
+}
+
+// Quiz start mutation hook
+export function useStartQuiz() {
+  const { getAuthHeaders } = useSession()
+  
+  return useSWRMutation(
+    '/api/certifications/start',
+    async (_: string, { arg }: { arg: string }) => {
+      const response = await fetch(`${API_ENDPOINTS.base}/api/certifications/${arg}/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to start quiz: ${response.statusText}`)
+      }
+      
+      return response.json()
+    }
+  )
 }

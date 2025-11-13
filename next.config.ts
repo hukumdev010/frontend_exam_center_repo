@@ -5,6 +5,24 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable optimized package imports
     optimizePackageImports: ['lucide-react'],
+    // Improve file watching in containers
+    webpackBuildWorker: false,
+  },
+  // Configure file watching for containers
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: [
+          '**/node_modules/**',
+          '**/.yarn/**',
+          '**/.next/**',
+          '**/.git/**'
+        ]
+      };
+    }
+    return config;
   },
   // Configure CORS and WebSocket origins
   async headers() {
@@ -49,6 +67,8 @@ const nextConfig: NextConfig = {
   env: {
     SUPPRESS_HYDRATION_WARNING: process.env.NEXT_PUBLIC_SUPPRESS_HYDRATION_WARNING || 'false',
   },
+  // Output configuration for better container compatibility
+  output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
 };
 
 export default nextConfig;

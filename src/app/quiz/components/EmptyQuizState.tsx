@@ -16,6 +16,7 @@ const EmptyQuizState = memo(function EmptyQuizState({
     questionsLength,
     currentQuestion
 }: EmptyQuizStateProps) {
+    console.log('🔄 EmptyQuizState component rendering');
     const router = useRouter();
 
     const handleBackHome = () => {

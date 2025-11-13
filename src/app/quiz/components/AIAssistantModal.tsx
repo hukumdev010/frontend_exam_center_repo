@@ -18,6 +18,7 @@ const AIAssistantModal = memo(function AIAssistantModal({
     response,
     onClose
 }: AIAssistantModalProps) {
+    console.log('🔄 AIAssistantModal component rendering');
     if (!isOpen) return null;
 
     const renderAIResponse = () => {

@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useEffect, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Award, Clock, Target, BookOpen, Trophy, Users, CheckCircle, Star, GraduationCap, Briefcase } from "lucide-react";
 import { useSession } from "@/lib/useAuth";
 import Header from "@/components/Header";
-import { API_ENDPOINTS } from "@/lib/api-config";
-import { useCertificationInfo } from "@/hooks/useApi";
-import { mutate } from "swr";
+import { useCertificationInfo, useStartQuiz } from "@/hooks/useApi";
 
 
 
@@ -17,17 +15,13 @@ function QuizInfoPageContent() {
     const router = useRouter();
     const { data: session } = useSession();
 
-    const [startingQuiz, setStartingQuiz] = useState(false);
-    const [mounted, setMounted] = useState(false);
-
     const certificationSlug = params.certification as string;
 
-    // Use SWR hook for data fetching
+    // Use SWR hook for certification info
     const { data: certificationInfo, isLoading: loading, error } = useCertificationInfo(certificationSlug);
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    // Use SWR mutation for starting quiz
+    const { trigger: startQuiz, isMutating: startingQuiz, error: startError } = useStartQuiz();
 
     useEffect(() => {
         // If user has already started, redirect to quiz
@@ -42,58 +36,18 @@ function QuizInfoPageContent() {
             return;
         }
 
-        setStartingQuiz(true);
         try {
-            const response = await fetch(
-                `${API_ENDPOINTS.base}/api/certifications/${certificationSlug}/start`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${session.access_token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Failed to start quiz');
-            }
-
-            const result = await response.json();
-
-            // Invalidate the SWR cache for certification info to ensure fresh data
-            // Use the same key format as the useCertificationInfo hook
-            const cacheKey = `${API_ENDPOINTS.certification.info(certificationSlug)}-${session.user?.id || 'anonymous'}`;
-            await mutate(cacheKey);
-
+            const result = await startQuiz(certificationSlug);
             router.push(result.redirect_to);
         } catch (err) {
-            // For now, just log the error and show an alert
             console.error('Failed to start quiz:', err);
-            alert(err instanceof Error ? err.message : 'Failed to start quiz. Please try again.');
-        } finally {
-            setStartingQuiz(false);
+            // Error is automatically handled by SWR
         }
     };
 
     const handleBackToHome = () => {
         router.push('/');
     };
-
-    // Prevent hydration mismatch by not rendering until mounted
-    if (!mounted) {
-        return (
-            <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-                <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-blue-100/50 shadow-xl p-8 max-w-md w-full mx-4">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-                        <h3 className="text-lg font-semibold text-slate-900 mb-2">Loading...</h3>
-                        <p className="text-slate-600">Preparing quiz information...</p>
-                    </div>
-                </div>
-            </main>
-        );
-    }
 
     if (loading) {
         return (
@@ -322,11 +276,11 @@ function QuizInfoPageContent() {
                             <Button
                                 onClick={handleStartQuiz}
                                 disabled={startingQuiz}
-                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 {startingQuiz ? (
                                     <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                                         Starting Quiz...
                                     </div>
                                 ) : (
@@ -336,43 +290,71 @@ function QuizInfoPageContent() {
                                     </div>
                                 )}
                             </Button>
+
+                            {startError && (
+                                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-red-700 text-sm">
+                                        {startError.message || 'Failed to start quiz. Please try again.'}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         // Non-logged in user content
                         <div className="text-center">
                             <div className="mb-6">
-                                <Users className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-slate-900 mb-2">Join Our Learning Community</h2>
+                                <h2 className="text-2xl font-bold text-slate-900 mb-2">Ready to Test Your Skills?</h2>
                                 <p className="text-slate-600 mb-4">
-                                    Create an account to start this certification quiz and track your progress.
+                                    Try the quiz now or create an account to save your progress and get certificates.
                                 </p>
-                                <div className="bg-blue-50 rounded-lg p-4 text-left">
-                                    <h3 className="font-semibold text-blue-900 mb-2">Why create an account?</h3>
-                                    <ul className="space-y-1 text-sm text-blue-800">
-                                        <li className="flex items-center gap-2">
-                                            <CheckCircle className="w-4 h-4" />
-                                            Save your progress and continue where you left off
-                                        </li>
-                                        <li className="flex items-center gap-2">
-                                            <CheckCircle className="w-4 h-4" />
-                                            Get your official certificate upon completion
-                                        </li>
-                                        <li className="flex items-center gap-2">
-                                            <CheckCircle className="w-4 h-4" />
-                                            Access to our teaching platform after high scores
-                                        </li>
-                                        <li className="flex items-center gap-2">
-                                            <CheckCircle className="w-4 h-4" />
-                                            Track your learning journey across multiple certifications
-                                        </li>
-                                    </ul>
+                            </div>
+
+                            {/* Primary Action - Try Quiz */}
+                            <div className="mb-6">
+                                <Button
+                                    onClick={() => router.push(`/quiz/${certificationSlug}`)}
+                                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Award className="w-5 h-5" />
+                                        Try Quiz Now
+                                    </div>
+                                </Button>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    *Progress won&apos;t be saved without an account
+                                </p>
+                            </div>
+
+                            {/* Account Benefits */}
+                            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Users className="w-5 h-5 text-blue-600" />
+                                    <h3 className="font-semibold text-blue-900">Want to save progress & get certified?</h3>
+                                </div>
+                                <div className="grid sm:grid-cols-2 gap-2 text-sm text-blue-800 mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        Save your progress
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        Get official certificate
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        Access teaching platform
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        Track learning journey
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <Button
                                     onClick={() => router.push('/auth/signup')}
-                                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2.5 font-semibold rounded-lg"
+                                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-2.5 font-semibold rounded-lg"
                                 >
                                     Sign Up Free
                                 </Button>

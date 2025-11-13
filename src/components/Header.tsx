@@ -33,7 +33,8 @@ const Header: React.FC<HeaderProps> = ({
     quizStats,
     customContent
 }) => {
-    const { user, isAuthenticated } = useAuth()
+    console.log('🔄 Header component rendering');
+    const { user, isAuthenticated, signOut } = useAuth()
     const [mounted, setMounted] = useState(false)
     const router = useRouter()
 
@@ -207,11 +208,7 @@ const Header: React.FC<HeaderProps> = ({
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
-                                        onClick={() => {
-                                            localStorage.removeItem('access_token');
-                                            localStorage.removeItem('user');
-                                            window.location.href = '/';
-                                        }}
+                                        onClick={() => signOut()}
                                         className="flex items-center gap-2 text-sm py-2 px-2 hover:bg-red-50 rounded-md text-red-600 cursor-pointer"
                                     >
                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

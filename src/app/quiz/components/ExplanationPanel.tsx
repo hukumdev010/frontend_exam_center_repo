@@ -27,6 +27,7 @@ const ExplanationPanel = memo(function ExplanationPanel({
     currentQuestion,
     onShowAI
 }: ExplanationPanelProps) {
+    console.log('🔄 ExplanationPanel component rendering');
     const shouldShowExplanation = explanationData.showExplanation &&
         explanationData.explanation &&
         explanationData.hasSubmitted &&

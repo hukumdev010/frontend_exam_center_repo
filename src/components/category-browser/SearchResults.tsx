@@ -69,7 +69,7 @@ export function SearchResults({
                 <>
                     {/* Certification Results */}
                     {hasResults() && activeTab === "certifications" && searchResults && (
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div className="p-6 grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6">
                             {searchResults.certifications.map((cert) => (
                                 <CertificationCard
                                     key={cert.id}
@@ -82,7 +82,7 @@ export function SearchResults({
 
                     {/* Teacher Results */}
                     {hasResults() && activeTab === "teachers" && teacherResults && (
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div className="p-6 grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6">
                             {teacherResults.teachers.map((teacher) => (
                                 <TeacherCard
                                     key={teacher.id}
