@@ -271,11 +271,9 @@ export function DashboardLayout({
 
     // Simple navigation - only show what's relevant
     const learningItems: SidebarItem[] = [
-        { title: "Dashboard", href: "/dashboard", icon: Home },
+        { title: "My Progress", href: "/dashboard/learning", icon: TrendingUp },
         { title: "Browse Subjects", href: "/dashboard/categories", icon: BookOpen },
         { title: "Find Teachers", href: "/dashboard/teachers", icon: Users },
-        { title: "My Progress", href: "/dashboard/learning", icon: TrendingUp },
-        { title: "Certificates", href: "/dashboard/certificates", icon: CheckCircle },
     ];
 
     // Only show teaching items if user actually has qualifications
