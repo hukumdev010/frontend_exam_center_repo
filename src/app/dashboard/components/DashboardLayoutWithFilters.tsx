@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import {
     ChevronLeft,
     ChevronRight,
-    Home,
     BookOpen,
     Award,
     Users,
@@ -18,8 +17,7 @@ import {
     X,
     Bell,
     Settings,
-    Target,
-    CheckCircle
+    Target
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

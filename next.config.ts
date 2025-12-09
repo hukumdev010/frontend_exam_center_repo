@@ -67,8 +67,14 @@ const nextConfig: NextConfig = {
   env: {
     SUPPRESS_HYDRATION_WARNING: process.env.NEXT_PUBLIC_SUPPRESS_HYDRATION_WARNING || 'false',
   },
-  // Output configuration for better container compatibility
-  output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
+  // Output configuration - temporarily disabled due to Next.js 15.5.0 build issue
+  // output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
+  // Skip trailing slash to avoid 404 generation issues
+  skipTrailingSlashRedirect: true,
+  // Disable static 404 generation
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
 };
 
 export default nextConfig;

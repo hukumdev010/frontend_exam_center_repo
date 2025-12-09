@@ -3,15 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useAuth";
-import { useTeacherEligibility } from "@/hooks/useTeacherEligibility";
 
 export default function DashboardPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
-
-    // Get teacher eligibility via SWR
-    const { qualifications } = useTeacherEligibility();
-    const isTeacher = qualifications?.has_teacher_profile || false;
 
     // Auth redirect effect
     useEffect(() => {
