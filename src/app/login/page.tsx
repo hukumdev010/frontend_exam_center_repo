@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { AuthService } from "@/app/auth/services";
+import CookieManager from "@/lib/cookie-manager";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -64,9 +65,19 @@ function LoginPageContent() {
         try {
             const response = await AuthService.loginWithEmailPassword(email, password);
 
-            // Store the token and user data
-            localStorage.setItem("access_token", response.access_token);
-            localStorage.setItem("user", JSON.stringify(response.user));
+            // Store the token and user data in cookies
+            CookieManager.setCookie("access_token", response.access_token, {
+                maxAge: 7 * 24 * 60 * 60, // 7 days
+                secure: true,
+                sameSite: 'Lax',
+                path: '/'
+            });
+            CookieManager.setCookie("user", JSON.stringify(response.user), {
+                maxAge: 7 * 24 * 60 * 60, // 7 days
+                secure: true,
+                sameSite: 'Lax',
+                path: '/'
+            });
 
             // Update auth context
             login(response.user, response.access_token);
@@ -101,8 +112,19 @@ function LoginPageContent() {
             // After successful registration, automatically log in
             const response = await AuthService.loginWithEmailPassword(email, password);
 
-            localStorage.setItem("access_token", response.access_token);
-            localStorage.setItem("user", JSON.stringify(response.user));
+            // Store in cookies
+            CookieManager.setCookie("access_token", response.access_token, {
+                maxAge: 7 * 24 * 60 * 60, // 7 days
+                secure: true,
+                sameSite: 'Lax',
+                path: '/'
+            });
+            CookieManager.setCookie("user", JSON.stringify(response.user), {
+                maxAge: 7 * 24 * 60 * 60, // 7 days
+                secure: true,
+                sameSite: 'Lax',
+                path: '/'
+            });
 
             login(response.user, response.access_token);
 

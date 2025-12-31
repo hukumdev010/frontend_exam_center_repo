@@ -4,6 +4,7 @@ import {
   Role, RoleCreate, RoleUpdate, RoleListResponse,
   UserWithRoles, UserRoleAssignment, UserListResponse
 } from '@/types/rbac';
+import CookieManager from '@/lib/cookie-manager';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -18,8 +19,8 @@ class RBACService {
       'Content-Type': 'application/json',
     };
 
-    // Get auth token from localStorage or cookie
-    const token = localStorage.getItem('token');
+    // Get auth token from cookie
+    const token = CookieManager.getCookie('auth_token');
     if (token) {
       defaultHeaders['Authorization'] = `Bearer ${token}`;
     }

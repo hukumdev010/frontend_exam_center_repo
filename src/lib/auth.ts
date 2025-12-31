@@ -1,4 +1,5 @@
 import { API_ENDPOINTS } from './api-config'
+import CookieManager from './cookie-manager'
 
 export interface User {
   id: string
@@ -24,36 +25,29 @@ class AuthService {
   private listeners: ((state: AuthState) => void)[] = []
   private initialized = false
 
-  // Helper method to safely access localStorage
-  private getStorageItem(key: string): string | null {
-    try {
-      return localStorage.getItem(key)
-    } catch {
-      return null
-    }
+  // Helper method to safely access cookies
+  private getCookie(key: string): string | null {
+    return CookieManager.getCookie(key)
   }
 
-  private setStorageItem(key: string, value: string): void {
-    try {
-      localStorage.setItem(key, value)
-    } catch {
-      // Ignore localStorage errors
-    }
+  private setCookie(key: string, value: string): void {
+    CookieManager.setCookie(key, value, {
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      secure: true,
+      sameSite: 'Lax',
+      path: '/'
+    })
   }
 
-  private removeStorageItem(key: string): void {
-    try {
-      localStorage.removeItem(key)
-    } catch {
-      // Ignore localStorage errors
-    }
+  private deleteCookie(key: string): void {
+    CookieManager.deleteCookie(key)
   }
 
   constructor() {
     // Initialize with loading state for SSR compatibility
-    // On client side, try to get initial state from localStorage
-    const token = this.getStorageItem('auth_token')
-    const userData = this.getStorageItem('user_data')
+    // On client side, try to get initial state from cookies
+    const token = this.getCookie('auth_token')
+    const userData = this.getCookie('user_data')
     
     if (token && userData) {
       try {
@@ -71,7 +65,7 @@ class AuthService {
 
   private async initializeAuth() {
     // Check for existing token (only available on client side)
-    const token = this.getStorageItem('auth_token')
+    const token = this.getCookie('auth_token')
     if (token) {
       try {
         // Validate token with backend using /me endpoint
@@ -90,19 +84,19 @@ class AuthService {
             isLoading: false
           }
           // Store updated user data
-          this.setStorageItem('user_data', JSON.stringify(userData))
+          this.setCookie('user_data', JSON.stringify(userData))
           this.notifyListeners()
           return
         } else {
-          // Token is invalid, clear storage
-          this.removeStorageItem('auth_token')
-          this.removeStorageItem('user_data')
+          // Token is invalid, clear cookies
+          this.deleteCookie('auth_token')
+          this.deleteCookie('user_data')
         }
       } catch (error) {
         console.error('Token validation failed:', error)
-        // Clear storage on error
-        this.removeStorageItem('auth_token')
-        this.removeStorageItem('user_data')
+        // Clear cookies on error
+        this.deleteCookie('auth_token')
+        this.deleteCookie('user_data')
       }
     }
 
@@ -140,7 +134,7 @@ class AuthService {
 
   // Token access methods for API calls
   getToken(): string | null {
-    return this.getStorageItem('auth_token')
+    return this.getCookie('auth_token')
   }
 
   getAuthHeaders(): Record<string, string> {
@@ -178,10 +172,10 @@ class AuthService {
     this.notifyListeners()
     
     if (authenticated && user) {
-      this.setStorageItem('user_data', JSON.stringify(user))
+      this.setCookie('user_data', JSON.stringify(user))
     } else {
-      this.removeStorageItem('auth_token')
-      this.removeStorageItem('user_data')
+      this.deleteCookie('auth_token')
+      this.deleteCookie('user_data')
     }
   }
 
@@ -202,9 +196,9 @@ class AuthService {
   }
 
   async login(user: User, token: string) {
-    // Store authentication data
-    this.setStorageItem('auth_token', token)
-    this.setStorageItem('user_data', JSON.stringify(user))
+    // Store authentication data in cookies
+    this.setCookie('auth_token', token)
+    this.setCookie('user_data', JSON.stringify(user))
     
     // Update state
     this.state = {
@@ -219,11 +213,11 @@ class AuthService {
   async signOut() {
     try {
       // Get token for logout endpoint
-      const token = this.getStorageItem('auth_token')
+      const token = this.getCookie('auth_token')
       
-      // Clear local storage
-      this.removeStorageItem('auth_token')
-      this.removeStorageItem('user_data')
+      // Clear cookies
+      this.deleteCookie('auth_token')
+      this.deleteCookie('user_data')
       
       // Update state
       this.state = {

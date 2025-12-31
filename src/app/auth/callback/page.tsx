@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '@/lib/auth';
+import CookieManager from '@/lib/cookie-manager';
 import { AuthService } from '../services';
 
 function AuthCallbackContent() {
@@ -30,7 +31,12 @@ function AuthCallbackContent() {
                 }
 
                 // Store the token and get user info
-                localStorage.setItem('auth_token', token);
+                CookieManager.setCookie('auth_token', token, {
+                    maxAge: 7 * 24 * 60 * 60, // 7 days
+                    secure: true,
+                    sameSite: 'Lax',
+                    path: '/'
+                });
 
                 // Get user info from backend
                 try {
@@ -39,7 +45,13 @@ function AuthCallbackContent() {
                         'Content-Type': 'application/json'
                     });
 
-                    localStorage.setItem('user_data', JSON.stringify(userData));
+                    // Store user data in cookie
+                    CookieManager.setCookie('user_data', JSON.stringify(userData), {
+                        maxAge: 7 * 24 * 60 * 60, // 7 days
+                        secure: true,
+                        sameSite: 'Lax',
+                        path: '/'
+                    });
 
                     // Notify auth service of successful login
                     authService.updateAuthState(true, userData);

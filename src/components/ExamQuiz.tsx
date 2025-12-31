@@ -6,6 +6,7 @@ import { useSession } from "@/lib/useAuth";
 import { QuestionCard } from "./QuestionCard";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { Question } from "../types/quiz";
+import CookieManager from "@/lib/cookie-manager";
 import {
     QuizCompletionScreen,
     ExplanationPanel,
@@ -80,7 +81,7 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
         }
     }, [certificationSlug, router]);
 
-    // Initialize state from localStorage if available, or from user progress if logged in
+    // Initialize state from cookies if available, or from user progress if logged in
     useEffect(() => {
         // Reset session score when component mounts - use functional updates
         const timer = setTimeout(() => {
@@ -92,7 +93,7 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
             if (session?.user?.id && certificationId) {
                 // Fetch user progress from backend for logged-in users
                 try {
-                    const token = localStorage.getItem('auth_token');
+                    const token = CookieManager.getCookie('auth_token');
                     const response = await fetch(API_ENDPOINTS.progress, {
                         headers: {
                             'Authorization': `Bearer ${token}`,
@@ -127,8 +128,8 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
                     console.error('Failed to fetch user progress:', error);
                 }
             } else if (certificationSlug) {
-                // Fallback to localStorage for non-authenticated users
-                const savedState = localStorage.getItem(`quiz-${certificationSlug}`);
+                // Fallback to cookies for non-authenticated users
+                const savedState = CookieManager.getCookie(`quiz-${certificationSlug}`);
                 if (savedState) {
                     const state = JSON.parse(savedState);
                     setScore(state.score || 0);
@@ -199,7 +200,7 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
         if (!session?.user?.id || !certificationId) return;
 
         try {
-            const token = localStorage.getItem('auth_token') || 'mock_token';
+            const token = CookieManager.getCookie('auth_token') || 'mock_token';
             await fetch(API_ENDPOINTS.quizAttempts, {
                 method: 'POST',
                 headers: {
@@ -219,15 +220,20 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
         }
     }, [session?.user?.id, certificationId, score, questions.length, totalPoints]);
 
-    // Save state to localStorage for non-authenticated users
+    // Save state to cookies for non-authenticated users
     const saveLocalState = useCallback((newScore: number, newAnsweredQuestions: Set<number>, newIsCompleted: boolean, newTotalPoints: number) => {
         if (certificationSlug && !session?.user?.id) {
-            localStorage.setItem(`quiz-${certificationSlug}`, JSON.stringify({
+            CookieManager.setCookie(`quiz-${certificationSlug}`, JSON.stringify({
                 score: newScore,
                 answeredQuestions: Array.from(newAnsweredQuestions),
                 isCompleted: newIsCompleted,
                 totalPoints: newTotalPoints
-            }));
+            }), {
+                maxAge: 7 * 24 * 60 * 60, // 7 days
+                secure: true,
+                sameSite: 'Lax',
+                path: '/'
+            });
         }
     }, [certificationSlug, session?.user?.id]);
 
@@ -235,7 +241,7 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
     const saveProgress = useCallback(async (questionIndex: number, correctAnswers: number, points: number, completed: boolean) => {
         if (session?.user?.id && certificationId) {
             try {
-                const token = localStorage.getItem('auth_token') || 'mock_token';
+                const token = CookieManager.getCookie('auth_token') || 'mock_token';
                 // Convert 0-based frontend array index to 1-based backend question number
                 const backendQuestionNumber = questionIndex + 1;
                 await fetch(API_ENDPOINTS.progress, {
@@ -328,7 +334,7 @@ function ExamQuizContent({ questions, certificationName, certificationSlug, cert
 
         // Clear saved state
         if (certificationSlug && !session?.user?.id) {
-            localStorage.removeItem(`quiz-${certificationSlug}`);
+            CookieManager.deleteCookie(`quiz-${certificationSlug}`);
         }
 
         // Update URL to first question

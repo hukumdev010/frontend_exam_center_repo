@@ -6,6 +6,7 @@ import { X, Bot, Send, Loader2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { useAIHealth } from "@/hooks/useApi";
+import CookieManager from "@/lib/cookie-manager";
 
 interface GeminiAssistantProps {
     currentQuestion?: string;
@@ -91,7 +92,7 @@ How can I help you study today?`,
                 return;
             }
 
-            const token = localStorage.getItem('auth_token') || 'mock_token';
+            const token = CookieManager.getCookie('auth_token') || 'mock_token';
 
             const requestBody = {
                 message: inputValue,

@@ -10,7 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { deterministicShuffle } from "@/lib/shuffle-utils";
-import { safeLocalStorage } from "@/lib/safe-storage";
+import CookieManager from "@/lib/cookie-manager";
 
 // Import highlight.js styles
 import 'highlight.js/styles/github.css';
@@ -155,7 +155,7 @@ export function QuestionCard({
             const certificationSlug = urlPath.split('/').pop() || 'aws-cloud-practitioner';
 
             // Call the verification API
-            const token = safeLocalStorage.getItem('auth_token');
+            const token = CookieManager.getCookie('auth_token');
             const headers: HeadersInit = {
                 'Content-Type': 'application/json',
             };

@@ -1,5 +1,5 @@
 import { SWRConfiguration } from 'swr'
-import { safeLocalStorage } from './safe-storage'
+import CookieManager from './cookie-manager'
 
 // Extended Error type with status code
 interface HTTPError extends Error {
@@ -8,8 +8,8 @@ interface HTTPError extends Error {
 
 // Default fetcher function that uses the auth service
 const fetcher = async (url: string) => {
-  // Get auth headers from localStorage or auth service using safe access
-  const token = safeLocalStorage.getItem('auth_token')
+  // Get auth headers from cookies
+  const token = CookieManager.getCookie('auth_token')
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   }
