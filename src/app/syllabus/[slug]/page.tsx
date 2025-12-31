@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
     SyllabusTopic,
     isStructuredSyllabus,
@@ -85,9 +85,18 @@ export default function SyllabusPage() {
     const [selectedTopic, setSelectedTopic] = useState<SyllabusTopic | null>(null);
     // Sidebar collapse state
     const [isCollapsed, setIsCollapsed] = useState(false);
+    // Ref for the scrollable content area
+    const contentAreaRef = useRef<HTMLDivElement>(null);
 
     // Use the first available topic as fallback if none is selected
     const currentTopic = selectedTopic || firstAvailableTopic;
+
+    // Scroll to top when topic changes
+    useEffect(() => {
+        if (contentAreaRef.current) {
+            contentAreaRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [selectedTopic]);
 
     if (isLoading) {
         return (
@@ -186,7 +195,7 @@ export default function SyllabusPage() {
             </div>
 
             {/* Right Content Area with better spacing and white background */}
-            <div className="flex-1 overflow-y-auto bg-white">
+            <div ref={contentAreaRef} className="flex-1 overflow-y-auto bg-white">
                 <div className="p-8 max-w-7xl mx-auto w-full">
                     {currentTopic ? (
                         <SyllabusContent
