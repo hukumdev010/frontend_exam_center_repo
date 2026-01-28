@@ -1,7 +1,9 @@
+'use client'
+
 import React, { useEffect, useState } from 'react'
-import { Award, User, ChevronDown, Home, CheckCircle, Target } from 'lucide-react'
+import { Award, User, ChevronDown, Home, CheckCircle, Target } from 'lucide-react';
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import {
     DropdownMenu,
@@ -26,23 +28,82 @@ interface HeaderProps {
     customContent?: React.ReactNode
 }
 
+const getHeaderConfig = (pathname?: string) => {
+    if (!pathname) return {};
+
+    if (pathname === '/') {
+        return {
+            pageTitle: "EduNeps - Learn & Teach",
+            pageDescription: "Master certifications with personalized learning paths and expert tutoring"
+        };
+    }
+
+    if (pathname.startsWith('/login')) {
+        return {
+            pageTitle: "Welcome to EduNeps",
+            pageDescription: "Sign in to access your learning dashboard and track your progress"
+        };
+    }
+
+    if (pathname.startsWith('/category/')) {
+        // Extract category name from slug if possible
+        const categorySlug = pathname.split('/')[2];
+        const categoryName = categorySlug?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return {
+            pageTitle: categoryName ? `${categoryName} Certifications` : "Browse Categories",
+            pageDescription: "Explore certification categories and start your learning journey"
+        };
+    }
+
+    if (pathname.startsWith('/auth/')) {
+        return {
+            pageTitle: "Authentication",
+            pageDescription: "Completing your sign-in process..."
+        };
+    }
+
+    // Default for other pages
+    return {};
+};
+
+const shouldShowHeader = (pathname?: string): boolean => {
+    if (!pathname) return true;
+
+    // Don't show header for dashboard pages and quiz pages (they have their own layout logic)
+    const isDashboard = pathname.startsWith('/dashboard');
+    const isQuizPage = pathname.startsWith('/quiz/');
+
+    return !isDashboard && !isQuizPage;
+};
+
 const Header: React.FC<HeaderProps> = ({
-    pageTitle,
-    pageDescription,
+    pageTitle: propPageTitle,
+    pageDescription: propPageDescription,
     showQuizStats = false,
     quizStats,
-    customContent
+    customContent,
 }) => {
     console.log('🔄 Header component rendering');
     const { user, isAuthenticated, signOut } = useAuth()
     const [mounted, setMounted] = useState(false)
     const router = useRouter()
+    const pathname = usePathname()
+
+    // Get header config from pathname
+    const headerConfig = getHeaderConfig(pathname);
+    const pageTitle = propPageTitle || headerConfig.pageTitle;
+    const pageDescription = propPageDescription || headerConfig.pageDescription;
 
     useEffect(() => {
         // Use a timeout to avoid calling setState during render
         const timer = setTimeout(() => setMounted(true), 0)
         return () => clearTimeout(timer)
     }, [])
+
+    // Check if header should be shown based on pathname
+    if (!shouldShowHeader(pathname)) {
+        return null;
+    }
 
     const handleLogoClick = () => {
         router.push('/')

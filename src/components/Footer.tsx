@@ -4,7 +4,25 @@ import React from 'react';
 import Link from 'next/link';
 import { Award, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
 
-const Footer: React.FC = () => {
+interface FooterProps {
+    pathname?: string;
+}
+
+const shouldShowFooter = (pathname?: string): boolean => {
+    if (!pathname) return true;
+
+    // Don't show footer for syllabus pages
+    const isSyllabusPage = pathname.startsWith('/syllabus/');
+
+    return !isSyllabusPage;
+};
+
+const Footer: React.FC<FooterProps> = ({ pathname }) => {
+    // Check if footer should be shown based on pathname
+    if (!shouldShowFooter(pathname)) {
+        return null;
+    }
+
     const currentYear = new Date().getFullYear();
 
     return (
