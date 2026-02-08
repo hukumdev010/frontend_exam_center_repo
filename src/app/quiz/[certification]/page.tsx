@@ -6,7 +6,7 @@ import { ExamQuiz } from "@/components/ExamQuiz";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Award, Clock, Target, BookOpen } from "lucide-react";
 import { useSession } from "@/lib/useAuth";
-import Header from "@/components/Header";
+import QuizHeader from "@/components/quiz/QuizHeader";
 import { useCertificationQuizData } from "@/hooks/useApi";
 
 function QuizPageContent() {
@@ -51,7 +51,7 @@ function QuizPageContent() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-                <Header />
+                <QuizHeader />
                 <div className="max-w-[1600px] mx-auto p-4 sm:p-6">
                     <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-blue-100/50 shadow-xl p-6">
                         <div className="text-center">
@@ -115,7 +115,7 @@ function QuizPageContent() {
     if (!certificationData) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-                <Header />
+                <QuizHeader />
                 <div className="max-w-[1600px] mx-auto p-4 sm:p-6">
                     <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-blue-100/50 shadow-xl p-6">
                         <div className="text-center">
@@ -139,14 +139,14 @@ function QuizPageContent() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-            <Header
+            <QuizHeader
+                certificationName={certificationData.name}
                 showQuizStats={!!session?.user}
                 quizStats={{
                     correct: quizStats.sessionScore,
-                    total: quizStats.totalPoints,
+                    total: quizStats.currentQuestion,
                     currentQuestion: quizStats.currentQuestion,
-                    totalQuestions: quizStats.totalQuestions,
-                    score: Math.round(quizStats.progress)
+                    totalQuestions: quizStats.totalQuestions
                 }}
                 customContent={
                     <div className="hidden sm:flex lg:hidden items-center gap-3 text-xs text-slate-600">
